@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="ReportListCamion" targetNamespace="http://tempuri.org/ReportListCamion.xsd" xmlns:mstns="http://tempuri.org/ReportListCamion.xsd" xmlns="http://tempuri.org/ReportListCamion.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:msprop="urn:schemas-microsoft-com:xml-msprop" attributeFormDefault="qualified" elementFormDefault="qualified">
+  <xs:annotation>
+    <xs:appinfo source="urn:schemas-microsoft-com:xml-msdatasource">
+      <DataSource DefaultConnectionIndex="0" FunctionsComponentName="QueriesTableAdapter" Modifier="AutoLayout, AnsiClass, Class, Public" SchemaSerializationMode="IncludeSchema" xmlns="urn:schemas-microsoft-com:xml-msdatasource">
+        <Connections />
+        <Tables />
+        <Sources />
+      </DataSource>
+    </xs:appinfo>
+  </xs:annotation>
+  <xs:element name="ReportListCamion" msdata:IsDataSet="true" msdata:UseCurrentLocale="true" msprop:EnableTableAdapterManager="true" msprop:Generator_DataSetName="ReportListCamion" msprop:Generator_UserDSName="ReportListCamion">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="DTListaCamion" msprop:Generator_TableClassName="DTListaCamionDataTable" msprop:Generator_TableVarName="tableDTListaCamion" msprop:Generator_RowChangedName="DTListaCamionRowChanged" msprop:Generator_TablePropName="DTListaCamion" msprop:Generator_RowDeletingName="DTListaCamionRowDeleting" msprop:Generator_RowChangingName="DTListaCamionRowChanging" msprop:Generator_RowEvHandlerName="DTListaCamionRowChangeEventHandler" msprop:Generator_RowDeletedName="DTListaCamionRowDeleted" msprop:Generator_RowClassName="DTListaCamionRow" msprop:Generator_UserTableName="DTListaCamion" msprop:Generator_RowEvArgName="DTListaCamionRowChangeEvent">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="ZLOTE" msprop:Generator_ColumnVarNameInTable="columnZLOTE" msprop:Generator_ColumnPropNameInRow="ZLOTE" msprop:Generator_ColumnPropNameInTable="ZLOTEColumn" msprop:Generator_UserColumnName="ZLOTE" type="xs:string" minOccurs="0" />
+              <xs:element name="ZCAMION" msprop:Generator_ColumnVarNameInTable="columnZCAMION" msprop:Generator_ColumnPropNameInRow="ZCAMION" msprop:Generator_ColumnPropNameInTable="ZCAMIONColumn" msprop:Generator_UserColumnName="ZCAMION" type="xs:string" minOccurs="0" />
+              <xs:element name="ZEMPRESA" msprop:Generator_ColumnVarNameInTable="columnZEMPRESA" msprop:Generator_ColumnPropNameInRow="ZEMPRESA" msprop:Generator_ColumnPropNameInTable="ZEMPRESAColumn" msprop:Generator_UserColumnName="ZEMPRESA" type="xs:string" minOccurs="0" />
+              <xs:element name="ZPAIS" msprop:Generator_ColumnVarNameInTable="columnZPAIS" msprop:Generator_ColumnPropNameInRow="ZPAIS" msprop:Generator_ColumnPropNameInTable="ZPAISColumn" msprop:Generator_UserColumnName="ZPAIS" type="xs:string" minOccurs="0" />
+              <xs:element name="ZFECHACARGA" msprop:Generator_ColumnVarNameInTable="columnZFECHACARGA" msprop:Generator_ColumnPropNameInRow="ZFECHACARGA" msprop:Generator_ColumnPropNameInTable="ZFECHACARGAColumn" msprop:Generator_UserColumnName="ZFECHACARGA" type="xs:string" minOccurs="0" />
+              <xs:element name="ZMATRICULA" msprop:Generator_ColumnVarNameInTable="columnZMATRICULA" msprop:Generator_ColumnPropNameInRow="ZMATRICULA" msprop:Generator_ColumnPropNameInTable="ZMATRICULAColumn" msprop:Generator_UserColumnName="ZMATRICULA" type="xs:string" minOccurs="0" />
+              <xs:element name="ZTRANSPORTISTA" msprop:Generator_ColumnVarNameInTable="columnZTRANSPORTISTA" msprop:Generator_ColumnPropNameInRow="ZTRANSPORTISTA" msprop:Generator_ColumnPropNameInTable="ZTRANSPORTISTAColumn" msprop:Generator_UserColumnName="ZTRANSPORTISTA" type="xs:string" minOccurs="0" />
+              <xs:element name="ZTELEFONO" msprop:Generator_ColumnVarNameInTable="columnZTELEFONO" msprop:Generator_ColumnPropNameInRow="ZTELEFONO" msprop:Generator_ColumnPropNameInTable="ZTELEFONOColumn" msprop:Generator_UserColumnName="ZTELEFONO" type="xs:string" minOccurs="0" />
+              <xs:element name="ZOBSERVACION" msprop:Generator_ColumnVarNameInTable="columnZOBSERVACION" msprop:Generator_ColumnPropNameInRow="ZOBSERVACION" msprop:Generator_ColumnPropNameInTable="ZOBSERVACIONColumn" msprop:Generator_UserColumnName="ZOBSERVACION" type="xs:string" minOccurs="0" />
+              <xs:element name="ZPOSICIONCAMION" msprop:Generator_ColumnVarNameInTable="columnZPOSICIONCAMION" msprop:Generator_ColumnPropNameInRow="ZPOSICIONCAMION" msprop:Generator_ColumnPropNameInTable="ZPOSICIONCAMIONColumn" msprop:Generator_UserColumnName="ZPOSICIONCAMION" type="xs:string" minOccurs="0" />
+              <xs:element name="ZPEDIDO" msprop:Generator_ColumnVarNameInTable="columnZPEDIDO" msprop:Generator_ColumnPropNameInRow="ZPEDIDO" msprop:Generator_ColumnPropNameInTable="ZPEDIDOColumn" msprop:Generator_UserColumnName="ZPEDIDO" type="xs:string" minOccurs="0" />
+              <xs:element name="ZCLIENTE" msprop:Generator_ColumnVarNameInTable="columnZCLIENTE" msprop:Generator_ColumnPropNameInRow="ZCLIENTE" msprop:Generator_ColumnPropNameInTable="ZCLIENTEColumn" msprop:Generator_UserColumnName="ZCLIENTE" type="xs:string" minOccurs="0" />
+              <xs:element name="ZFORMATO" msprop:Generator_ColumnVarNameInTable="columnZFORMATO" msprop:Generator_ColumnPropNameInRow="ZFORMATO" msprop:Generator_ColumnPropNameInTable="ZFORMATOColumn" msprop:Generator_UserColumnName="ZFORMATO" type="xs:string" minOccurs="0" />
+              <xs:element name="ZVARIEDAD" msprop:Generator_ColumnVarNameInTable="columnZVARIEDAD" msprop:Generator_ColumnPropNameInRow="ZVARIEDAD" msprop:Generator_ColumnPropNameInTable="ZVARIEDADColumn" msprop:Generator_UserColumnName="ZVARIEDAD" type="xs:string" minOccurs="0" />
+              <xs:element name="ZNUMCAJAS" msprop:Generator_ColumnVarNameInTable="columnZNUMCAJAS" msprop:Generator_ColumnPropNameInRow="ZNUMCAJAS" msprop:Generator_ColumnPropNameInTable="ZNUMCAJASColumn" msprop:Generator_UserColumnName="ZNUMCAJAS" type="xs:string" minOccurs="0" />
+              <xs:element name="ZNUMPLANTAS" msprop:Generator_ColumnVarNameInTable="columnZNUMPLANTAS" msprop:Generator_ColumnPropNameInRow="ZNUMPLANTAS" msprop:Generator_ColumnPropNameInTable="ZNUMPLANTASColumn" msprop:Generator_UserColumnName="ZNUMPLANTAS" type="xs:string" minOccurs="0" />
+              <xs:element name="ZOBSERVACIONES" msprop:Generator_ColumnVarNameInTable="columnZOBSERVACIONES" msprop:Generator_ColumnPropNameInRow="ZOBSERVACIONES" msprop:Generator_ColumnPropNameInTable="ZOBSERVACIONESColumn" msprop:Generator_UserColumnName="ZOBSERVACIONES" type="xs:string" minOccurs="0" />
+              <xs:element name="NUMPALET" msprop:Generator_ColumnVarNameInTable="columnNUMPALET" msprop:Generator_ColumnPropNameInRow="NUMPALET" msprop:Generator_ColumnPropNameInTable="NUMPALETColumn" msprop:Generator_UserColumnName="NUMPALET" type="xs:string" minOccurs="0" />
+              <xs:element name="ZMIPALET" msprop:Generator_ColumnVarNameInTable="columnZMIPALET" msprop:Generator_ColumnPropNameInRow="ZMIPALET" msprop:Generator_ColumnPropNameInTable="ZMIPALETColumn" msprop:Generator_UserColumnName="ZMIPALET" type="xs:string" minOccurs="0" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

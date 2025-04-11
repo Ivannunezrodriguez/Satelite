@@ -1,0 +1,98 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/Container.css" rel="stylesheet" />
+</head>
+<body>
+    <div class="row">
+        <div class="col-lg-8">
+        </div>
+        <div class="col-lg-2">
+            <div class="panel panel-default" style=" height: 100%;" align=center>
+                <img src="images/upCamion.png" alt="placeholder" style="border: 0px;">
+                <section id="container" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <div class="padre" style="width: 100%; height: 100%;">
+                        <div class="tipo" id="fuego" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                        <div class="tipo" id="agua" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="col-lg-2">
+            <div class="panel panel-default" style=" height: 100%;" align=center>
+                <section id="container2" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <div class="contenedor" draggable="true" ondragstart="drag(event)" id="drag0" data-tooltip="QR 21P322   Variedad FORTUNA    Plantas:15.458  Almacen: C1 Campo: Avestruces">
+                        <img class="pokemon" src="images/palet200X300.png" />
+                        <div id="dragText0" class="centrado">QR 21P322</div>
+                    </div>
+                    <div class="contenedor" draggable="true" ondragstart="drag(event)" id="drag1" data-tooltip="QR 21P322   Variedad FORTUNA    Plantas:15.458  Almacen: C1 Campo: Avestruces">
+                        <img class="pokemon" src="images/palet200X300.png" />
+                        <div class="centrado">QR 21P323</div>
+                    </div>
+                    <div class="contenedor" draggable="true" ondragstart="drag(event)" id="drag2" data-tooltip="QR 21P322   Variedad FORTUNA    Plantas:15.458  Almacen: C1 Campo: Avestruces">
+                        <img class="pokemon" src="images/palet200X300.png" />
+                        <div class="centrado">QR 21P324</div>
+                    </div>
+                    <div class="contenedor" draggable="true" ondragstart="drag(event)" id="drag3" data-tooltip="QR 21P322   Variedad FORTUNA    Plantas:15.458  Almacen: C1 Campo: Avestruces">
+                        <img class="pokemon" src="images/palet200X300.png" />
+                        <div class="centrado">QR 21P325</div>
+                    </div>
+                    <div class="contenedor" draggable="true" ondragstart="drag(event)" id="drag4" data-tooltip="QR 21P322   Variedad FORTUNA    Plantas:15.458  Almacen: C1 Campo: Avestruces">
+                        <img class="pokemon" src="images/mediopalet200X300.png" />
+                        <div class="centrado">QR 21P326</div>
+                    </div>
+                    <div class="contenedor" draggable="true" ondragstart="drag(event)" id="drag5" data-tooltip="QR 21P322   Variedad FORTUNA    Plantas:15.458  Almacen: C1 Campo: Avestruces">
+                        <img class="pokemon" src="images/palet200X300.png" />
+                        <div class="centrado">QR 21P327</div>
+                    </div>
+                    <div class="contenedor" draggable="true" ondragstart="drag(event)" id="drag6" data-tooltip="QR 21P322   Variedad FORTUNA    Plantas:15.458  Almacen: C1 Campo: Avestruces">
+                        <img class="pokemon" src="images/palet200X300.png" />
+                        <div class="centrado">QR 21P328</div>
+                    </div>
+                    <div class="contenedor" draggable="true" ondragstart="drag(event)" id="drag7" data-tooltip="QR 21P322   Variedad FORTUNA    Plantas:15.458  Almacen: C1 Campo: Avestruces">
+                        <img class="pokemon" src="images/palet200X300.png" />
+                        <div class="centrado">QR 21P328</div>
+                    </div>
+                    <div class="contenedor" draggable="true" ondragstart="drag(event)" id="drag8" data-tooltip="QR 21P322   Variedad FORTUNA    Plantas:15.458  Almacen: C1 Campo: Avestruces">
+                        <img class="pokemon" src="images/palet200X300.png" />
+                        <div class="centrado">QR 21P330</div>
+                    </div>
+                    <div class="contenedor" draggable="true" ondragstart="drag(event)" id="drag9" data-tooltip="QR 21P322   Variedad FORTUNA    Plantas:15.458  Almacen: C1 Campo: Avestruces">
+                        <img class="pokemon" src="images/palet200X300.png" />
+                        <div class="centrado">QR 21P331</div>
+                    </div>
+                </section>
+            </div>
+        </div>
+        <!--</div>-->
+
+        <div class="col-lg-4">
+        </div>
+    </div>
+    <script type="text/javascript">
+
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            var data = ev.dataTransfer.getData("text");
+            ev.target.appendChild(document.getElementById(data));
+        }
+
+    </script>
+</body>
+
+
+</html >

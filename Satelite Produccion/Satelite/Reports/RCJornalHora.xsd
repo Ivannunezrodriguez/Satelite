@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="RCJornalHora" targetNamespace="http://tempuri.org/RCJornalHora.xsd" xmlns:mstns="http://tempuri.org/RCJornalHora.xsd" xmlns="http://tempuri.org/RCJornalHora.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:msprop="urn:schemas-microsoft-com:xml-msprop" attributeFormDefault="qualified" elementFormDefault="qualified">
+  <xs:annotation>
+    <xs:appinfo source="urn:schemas-microsoft-com:xml-msdatasource">
+      <DataSource DefaultConnectionIndex="0" FunctionsComponentName="QueriesTableAdapter" Modifier="AutoLayout, AnsiClass, Class, Public" SchemaSerializationMode="IncludeSchema" xmlns="urn:schemas-microsoft-com:xml-msdatasource">
+        <Connections />
+        <Tables />
+        <Sources />
+      </DataSource>
+    </xs:appinfo>
+  </xs:annotation>
+  <xs:element name="RCJornalHora" msdata:IsDataSet="true" msdata:UseCurrentLocale="true" msprop:EnableTableAdapterManager="true" msprop:Generator_DataSetName="RCJornalHora" msprop:Generator_UserDSName="RCJornalHora">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="DatasetJornalHora" msprop:Generator_TableClassName="DatasetJornalHoraDataTable" msprop:Generator_TableVarName="tableDatasetJornalHora" msprop:Generator_RowChangedName="DatasetJornalHoraRowChanged" msprop:Generator_TablePropName="DatasetJornalHora" msprop:Generator_RowDeletingName="DatasetJornalHoraRowDeleting" msprop:Generator_RowChangingName="DatasetJornalHoraRowChanging" msprop:Generator_RowEvHandlerName="DatasetJornalHoraRowChangeEventHandler" msprop:Generator_RowDeletedName="DatasetJornalHoraRowDeleted" msprop:Generator_RowClassName="DatasetJornalHoraRow" msprop:Generator_UserTableName="DatasetJornalHora" msprop:Generator_RowEvArgName="DatasetJornalHoraRowChangeEvent">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="COD_EMPLEADO" msprop:Generator_ColumnVarNameInTable="columnCOD_EMPLEADO" msprop:Generator_ColumnPropNameInRow="COD_EMPLEADO" msprop:Generator_ColumnPropNameInTable="COD_EMPLEADOColumn" msprop:Generator_UserColumnName="COD_EMPLEADO" type="xs:string" minOccurs="0" />
+              <xs:element name="NOMBRE" msprop:Generator_ColumnVarNameInTable="columnNOMBRE" msprop:Generator_ColumnPropNameInRow="NOMBRE" msprop:Generator_ColumnPropNameInTable="NOMBREColumn" msprop:Generator_UserColumnName="NOMBRE" type="xs:string" minOccurs="0" />
+              <xs:element name="APELLIDOS" msprop:Generator_ColumnVarNameInTable="columnAPELLIDOS" msprop:Generator_ColumnPropNameInRow="APELLIDOS" msprop:Generator_ColumnPropNameInTable="APELLIDOSColumn" msprop:Generator_UserColumnName="APELLIDOS" type="xs:string" minOccurs="0" />
+              <xs:element name="FECHA" msprop:Generator_ColumnVarNameInTable="columnFECHA" msprop:Generator_ColumnPropNameInRow="FECHA" msprop:Generator_ColumnPropNameInTable="FECHAColumn" msprop:Generator_UserColumnName="FECHA" type="xs:string" minOccurs="0" />
+              <xs:element name="TOTALIMPORTE" msprop:Generator_ColumnVarNameInTable="columnTOTALIMPORTE" msprop:Generator_ColumnPropNameInRow="TOTALIMPORTE" msprop:Generator_ColumnPropNameInTable="TOTALIMPORTEColumn" msprop:Generator_UserColumnName="TOTALIMPORTE" type="xs:string" minOccurs="0" />
+              <xs:element name="TIEMPO" msprop:Generator_ColumnVarNameInTable="columnTIEMPO" msprop:Generator_ColumnPropNameInRow="TIEMPO" msprop:Generator_ColumnPropNameInTable="TIEMPOColumn" msprop:Generator_UserColumnName="TIEMPO" type="xs:string" minOccurs="0" />
+              <xs:element name="VIVIENDA" msprop:Generator_ColumnVarNameInTable="columnVIVIENDA" msprop:Generator_ColumnPropNameInRow="VIVIENDA" msprop:Generator_ColumnPropNameInTable="VIVIENDAColumn" msprop:Generator_UserColumnName="VIVIENDA" type="xs:string" minOccurs="0" />
+              <xs:element name="DIAS" msprop:Generator_ColumnVarNameInTable="columnDIAS" msprop:Generator_ColumnPropNameInRow="DIAS" msprop:Generator_ColumnPropNameInTable="DIASColumn" msprop:Generator_UserColumnName="DIAS" type="xs:string" minOccurs="0" />
+              <xs:element name="ALQVIVIENDA" msprop:Generator_ColumnVarNameInTable="columnALQVIVIENDA" msprop:Generator_ColumnPropNameInRow="ALQVIVIENDA" msprop:Generator_ColumnPropNameInTable="ALQVIVIENDAColumn" msprop:Generator_UserColumnName="ALQVIVIENDA" type="xs:string" minOccurs="0" />
+              <xs:element name="COSTEVIVIENDA" msprop:Generator_ColumnVarNameInTable="columnCOSTEVIVIENDA" msprop:Generator_ColumnPropNameInRow="COSTEVIVIENDA" msprop:Generator_ColumnPropNameInTable="COSTEVIVIENDAColumn" msprop:Generator_UserColumnName="COSTEVIVIENDA" type="xs:string" minOccurs="0" />
+              <xs:element name="TOTAL" msprop:Generator_ColumnVarNameInTable="columnTOTAL" msprop:Generator_ColumnPropNameInRow="TOTAL" msprop:Generator_ColumnPropNameInTable="TOTALColumn" msprop:Generator_UserColumnName="TOTAL" type="xs:string" minOccurs="0" />
+              <xs:element name="FECHAINI" msprop:Generator_ColumnVarNameInTable="columnFECHAINI" msprop:Generator_ColumnPropNameInRow="FECHAINI" msprop:Generator_ColumnPropNameInTable="FECHAINIColumn" msprop:Generator_UserColumnName="FECHAINI" type="xs:string" minOccurs="0" />
+              <xs:element name="FECHAFIN" msprop:Generator_ColumnVarNameInTable="columnFECHAFIN" msprop:Generator_ColumnPropNameInRow="FECHAFIN" msprop:Generator_ColumnPropNameInTable="FECHAFINColumn" msprop:Generator_UserColumnName="FECHAFIN" type="xs:string" minOccurs="0" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

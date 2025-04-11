@@ -1,0 +1,46 @@
+.au audio/basic
+.avi video/msvideo, video/avi, video/x-msvideo
+.bmp image/bmp
+.css text/css
+.doc application/msword
+.docx application/vnd.openxmlformats-officedocument.wordprocessingml.document
+.dotx application/vnd.openxmlformats-officedocument.wordprocessingml.template
+.exe application/octet-stream
+.gif image/gif
+.gz application/x-gzip
+.html text/html
+.jar application/Java-archive
+.jpg image/jpeg
+.js application/x-javascript
+.midi audio/x-midi
+.mp3 audio/mpeg
+.mpeg video/mpeg
+.ogg audio/vorbis, application/ogg
+.pdf application/pdf
+.png image/png
+.potx application/vnd.openxmlformats-officedocument.presentationml.template
+.ppsx application/vnd.openxmlformats-officedocument.presentationml.slideshow
+.ppt application/vnd.ms-powerpointtd
+.pptx application/vnd.openxmlformats-officedocument.presentationml.presentation
+.ps application/postscript
+.qt video/quicktime
+.ra audio/x-pn-realaudio, audio/vnd.rn-realaudio
+.ram audio/x-pn-realaudio, audio/vnd.rn-realaudio
+.rtf application/rtf
+.sgml text/sgml
+.sldx application/vnd.openxmlformats-officedocument.presentationml.slide
+.svg image/svg+xml
+.swf application/x-shockwave-flash
+.tar.gz application/x-tar
+.tgz application/x-tar
+.tiff image/tiff
+.tsv text/tab-separated-values
+.txt text/plain
+.wav audio/wav, audio/x-wav
+.xlam application/vnd.ms-Excel.addin.macroEnabled.12
+.xls application/vnd.ms-Excel
+.xlsb application/vnd.ms-Excel.sheet.binary.macroEnabled.12
+.xlsx application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+.xltx application/vnd.openxmlformats-officedocument.spreadsheetml.template
+.xml application/xml
+.zip application/Zip, application/x-compressed-Zip

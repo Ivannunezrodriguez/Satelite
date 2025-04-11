@@ -1,0 +1,333 @@
+﻿ <%@ Master Language="C#" AutoEventWireup="true" CodeBehind="MarketplaceParent.master.cs" Inherits="Satelite.MarketplaceParent" %>
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="es">
+    <head runat="server">
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+        <link rel="shortcut icon" href="assets/img/favicon.png" type="image/x-icon"/>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css"/>
+        <link rel="stylesheet" href="./css/swiper-bundle.min.css"/>
+        <link rel="stylesheet" href="./css/styles.css"/>
+        <link rel="stylesheet" href="./css/marketplace.css"/>
+        <link href="font-awesome-4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"/>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="./js/cesta_compra.js"></script>
+
+        <title>Viveros Rio Eresma Marketplace</title>
+    </head>
+<body runat="server">
+    <!--==================== HEADER ====================-->
+        <header class="header" id="header">
+            <nav class="nav container">
+                <a href="default.aspx" class="nav__logo">
+                    <img src="./images/Logo_Rio_Eresma.png" class="imglogo" alt="Galeria CSS 2"></img> 
+                    <!--Viveros Rio Eresma-->
+                </a>
+                <div class="nav__menu" id="nav-menu">
+                    <ul class="nav__list">
+                        <!--li class="nav__item">
+                            <a href="default.aspx" class="nav__link active-link">Inicio</a>
+                        </!--li-->
+                        <!--li class="nav__item">
+                            <a href="#featured" class="nav__link">Destacado</a>
+                        </!--li-->
+                        <li class="nav__item">
+                            <div class="dropdown">
+                                <label class="dropbtn nav__link"> Productos </label>
+                                <div class="dropdown-content">
+                                    <asp:Repeater ID="RepeaterProductGrup" runat="server">
+                                        <ItemTemplate>
+                                            <a href="./MarketplaceProducts.aspx?grp=<%# Eval("Grupo") %>"><%# Eval("Grupo") %></a>
+                                        </ItemTemplate>
+                                    </asp:Repeater>
+                                </div>
+                            </div>
+
+                        </li>
+                        <li class="nav__item">
+                            <a href="#" class="nav__link">Sobre Nosotros</a>
+                        </li>
+                        <li class="nav__item">
+                            <a href="MarketContact.aspx" class="nav__link">Contacto</a>
+                        </li>
+                        <li class="nav__item">
+                            <form method="get" action="MarketSearch.aspx">
+                                <input class="buscador" type="text" name="search" placeholder="">
+                            </form>
+                        </li>
+                        <!--li class="nav__item">
+                            <a href="#new" class="nav__link">¡Nuevo!</a>
+                        </!--li-->
+                    </ul>
+
+                    <div class="nav__close" id="nav-close">
+                        <i class='bx bx-x' ></i>
+                    </div>
+                </div>
+
+               <div class="nav__btns">
+                    <!-- Boton tema oscuro No disponible aun -->
+                    <!--div class="nav__shop" id="cart-shop">
+                        <i class='bx bx-moon change-theme' id="theme-button"></i>
+                    </div-->
+                    
+
+                    <!-- boton cesta compra -->
+                    <div class="nav__shop" id="cart-shop">
+                        <i class='bx bx-shopping-bag' onclick="toggleDisplay()">
+                            <label id="cont_cesta" runat="server"> </label>
+                        </i>
+                        
+                    </div>
+
+                    <div class="nav__toggle" id="nav-toggle">
+                        <i class='bx bx-grid-alt' ></i>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+     <!--==================== Cesta ===================-->
+    <div id="div_cesta" class ="div_cesta" style="display: none;">
+        <button id="Button2" type="button" onclick="$('#div_cesta').css('display', 'none')" style=" text-align:right; position:absolute; top:10px; left:96%; border-style:none; background-color:transparent;" class="pull-right text-muted " >
+            <i title="Cerrar ventana" class="fa fa-times fa-2x"></i>
+        </button>
+        <!-- Productos -->
+        <div class ="div_cesta_productos">
+            <table class="tabla_produduto">
+                <thead>
+                    <th class="uds_producto_tabla">Uds.</th>
+                    <th class="img_producto_tabla"></th>
+                    <th class="title_producto_tabla">Producto</th>
+                    <th class="price_producto_tabla">Precio</th>
+                    <th class="price_producto_tabla"></th>
+                </thead>
+
+                <tbody id="tabla_produduto_body" runat="server">
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Total -->
+        <div class ="div_cesta_total total_price">
+               <label id="total_price" runat="server"> 0 € </label>
+        </div>
+
+        <!-- Comprar -->
+        <div class ="div_cesta_comprar">
+            <button class="button home_button" onclick="$('#div_pago').css('display', 'flex')">COMPRAR</button>
+        </div>
+    </div>
+
+     <!--==================== PAGO ===================-->
+     <form id="div_pago" class="div_pago" action="javascript: enviar_cesta()" style="display:none">
+         <h2  style="font-size:28px;font-weight:bold; color: black; text-align:center;width:96%; background:var(--first-color); opacity: 0.91; border-radius: 26px 26px 26px 26px;">FORMULARIO DE PAGO</h2>
+        <button id="Buttoncerrar" type="button" onclick="$('#div_pago').css('display', 'none')" style=" text-align:right; position:absolute; top:10px; left:94%; border-style:none; background-color:transparent;" class="pull-right text-muted " >
+            <i title="Cerrar ventana" class="fa fa-times fa-2x"></i>
+        </button>
+
+        <br />
+        <br />
+           <label style="font-size:14px;">Complete el Formulario con los datos necesarios para poder enviarle esta información a su cuenta de correo con copia a la nuestra, y poner en espera su tramitación de pedido.  </label>
+
+        <br />
+        <br />
+        <div class="row" >
+            <div class="col-sm-2"></div>
+            <div class="col-sm-4">
+                <label style="font-size:18px;">Nombre y apellidos:  </label>
+            </div>
+            <div class="col-sm-4">
+                <input visible="true" style="text-align:center; font-weight:bold; font-size:18px; background-color:white;"   width="100%" placeholder=""  id="TxtName" required/>
+            </div>
+            <div class="col-sm-2"></div>
+        </div>
+        <div class="row" >
+            <div class="col-sm-2"></div>
+            <div class="col-sm-4">
+                <label style="font-size:18px;">Municipio:  </label>
+            </div>
+            <div class="col-sm-4">
+                <input visible="true" style="text-align:center; font-weight:bold; font-size:18px; background-color:white;"  width="100%" placeholder="Municipio"  id="TxtMunicipio" required/>
+            </div>
+            <div class="col-sm-2"></div>
+        </div>
+        <div class="row" >
+            <div class="col-sm-2"></div>
+            <div class="col-sm-4">
+                <label style="font-size:18px;">Provincia:  </label>
+            </div>
+            <div class="col-sm-4">
+                <input visible="true" style="text-align:center; font-weight:bold; font-size:18px; background-color:white;" width="100%" placeholder="Provincia"  Id="TxtMunicipio" required/>
+            </div>
+            <div class="col-sm-2"></div>
+        </div>
+        <div class="row" >
+            <div class="col-sm-2"></div>
+            <div class="col-sm-4">
+                <label style="font-size:18px;">Telefono:  </label>
+            </div>
+            <div class="col-sm-4">
+                <input type="tel" visible="true" style="text-align:center; font-weight:bold; font-size:18px; background-color:white;" width="100%" placeholder="926 48 01 80"  id="TxtTelefono" required/>
+            </div>
+            <div class="col-sm-2"></div>
+        </div>
+        <div class="row" >
+            <div class="col-sm-2"></div>
+            <div class="col-sm-4">
+                <label style="font-size:18px;">Email:  </label>
+            </div>
+            <div class="col-sm-4">
+                <input type="email" visible="true" style="text-align:center; font-weight:bold; font-size:18px; background-color:white;" width="100%" placeholder="ejemplo@viveroseresma.com"  id="TxtMail" required/>
+            </div>
+            <div class="col-sm-2"></div>
+        </div>
+
+
+        <div class="col-sm-2"></div>
+            
+        <div class="col-sm-8">
+            <br />
+            <label style="font-size:22px;">Total de articulos comprados: <label id="LbCantidad" runat="server"> 0 </label></label>
+        <br />
+            <br />
+            <label style="font-size:22px;">Por un Importe Total: <label id="LbTotal" runat="server"> 0 €</label></label>
+        <br />
+        <br />
+            <label id="Label3" visible="true" style="font-size:18px;">Nº de cuenta para pagar el curso:</label>
+            <br />
+            <label id="Label4" visible="true" style="font-size:22px;">Sabadell:<label style="font-weight:bold"> ESXX XXXX XXXX XXXX XXXX XXXX.</label></label>
+            <br />
+            <br />
+            <label id="Label5" visible="true" style="font-size:18px;" >El justificante de pago deberá enviarlo a <label style="font-weight:bold">viveros@viveroseresma.com</label></label>
+            <br />
+            <label id="Label6" visible="true" style="font-size:18px;" >junto con el identificador del pedido proporcionado al enviar el formulario</label>
+            <br />
+            <br />
+            <label id="LbGuarde" style="font-size:18px; display:none" >Guarde este número de justificante, para identificar su Compra: <label id="LbNumTicket" style="font-weight:bold;font-size:22px;color:blue; text-align:center;">sdsdsdsd</label></label
+        <br />
+
+        </div>
+        <div class="col-sm-2"></div>
+    
+        <div class="row" >
+            <div class="col-sm-5"></div>
+            <div class="col-sm-2">
+                <button id="Btnenviar2" type="submit" class="btn" style="width:140px;height:60px;" ><i style="font-size:16px;" class="fa fa-lock"></i> Enviar</button>
+            </div>
+            <div class="col-sm-5"></div>
+        </div>
+    </form>
+
+
+    <!--==================== REPLACEABLE CONTENT ====================-->
+    <asp:ContentPlaceHolder ID="Main" runat="server" ></asp:ContentPlaceHolder> 
+
+    <!--==================== FOOTER ====================-->
+        <footer id="divContact" class="footer section">
+            <div class="footer__container container grid">
+                <div class="footer__content">
+                    <h3 class="footer__title">Central de Viveros Rio Eresma</h3>
+
+                    <ul class="footer__list">
+                        <li>C/ Luz sin numero</li>
+                        <li>Navalmanzano, 13003 (SEGOVIA)</li>
+                        <li>9XX XX XX XX</li>
+                        <li>6XX XX XX XX</li>
+                        <li>9:00h a 14:00h y de 17:00h a 19:00h (De lunes a viernes)</li>
+                    </ul>
+                </div>
+
+                <div class="footer__content">
+                    <h3 class="footer__title">Almacen MUDRIAN</h3>
+
+                    <ul class="footer__list">
+                        <li>Ctra Mudrian a Navamanzano km 1.2 </li>
+                        <li>Mudrian, SEGOVIA</li>
+                        <li>9XX XX XX XX</li>
+                        <li>6XX XX XX XX</li>
+                        <li>9:00h a 14:00h y de 17:00h a 19:00h (De lunes a viernes)</li>
+                    </ul>
+                </div>
+
+                <!--div class="footer__content">
+                    <h3 class="footer__title">About Us</h3>
+
+                    <ul class="footer__links">
+                        <li>
+                            <a href="#" class="footer__link">Support Center</a>
+                        </li>
+                        <li>
+                            <a href="#" class="footer__link">Customer Support</a>
+                        </li>
+                        <li>
+                            <a href="#" class="footer__link">About Us</a>
+                        </li>
+                        <li>
+                            <a href="#" class="footer__link">Copy Right</a>
+                        </li>
+                    </ul>
+                </!--div-->
+
+                <!--div class="footer__content">
+                    <h3 class="footer__title">Product</h3>
+
+                    <ul class="footer__links">
+                        <li>
+                            <a href="#" class="footer__link">Road bikes</a>
+                        </li>
+                        <li>
+                            <a href="#" class="footer__link">Mountain bikes</a>
+                        </li>
+                        <li>
+                            <a href="#" class="footer__link">Electric</a>
+                        </li>
+                        <li>
+                            <a href="#" class="footer__link">Accesories</a>
+                        </li>
+                    </ul>
+                </div-->
+
+                <div class="footer__content">
+                    <h3 class="footer__title">Social</h3>
+
+                    <ul class="footer__social">
+                        <li>
+                            <a href="https://www.facebook.com/" target="_blank" class="footer__social-link">
+                                <i class='bx bxl-facebook'></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://es.linkedin.com/company/viveros-eresma" target="_blank" class="footer__social-link">
+                                <i class='bx bxl-linkedin' ></i>
+                            </a>
+                        </li>
+                        <li>
+                        <a href="https://www.instagram.com/" target="_blank" class="footer__social-link">
+                            <i class='bx bxl-instagram' ></i>
+                        </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <span class="footer__copy">&#169; ZERO. All rigths reserved</span>
+        </footer>
+
+        <!--=============== SCROLL UP ===============-->
+        <a href="#" class="scrollup" id="scroll-up"> 
+            <i class='bx bx-up-arrow-alt scrollup__icon' ></i>
+        </a>
+
+        <!--=============== SWIPER JS ===============-->
+        <script src="assets/js/swiper-bundle.min.js"></script>
+
+        <!--=============== MAIN JS ===============-->
+        <script src="assets/js/main.js"></script>
+</body>
+</html>

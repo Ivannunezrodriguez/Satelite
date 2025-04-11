@@ -1,0 +1,4249 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using QRCoder;
+using System.Drawing;
+using System.IO;
+using System.Data;
+using System.Data.SqlClient;
+using System.Globalization;
+using System.Web.UI.HtmlControls;
+using ZXing;
+
+//LoteAuto: Generación de lotes automáticos
+//LoteRevi : Revisión lotes y preparación importación a GoldenSoft
+//LoteManu: Generación lotes manuales (para lotes externos) 
+
+
+namespace Satelite
+{
+    public partial class LoteRevi : System.Web.UI.Page
+    {
+        public Boolean Esta = false;
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                this.Session["Procesa"] = "0";
+
+
+                if (Session["Session"] == null)
+                {
+                    this.Session["Error"] = "0";
+                    Response.Redirect("Login.aspx"); //Default
+                }
+
+                if (this.Session["MiNivel"].ToString() == "9")
+                {
+                    Nominas.Visible = true;
+                }
+
+                if (Session["Session"].ToString() == "" || Session["Session"].ToString() == "0")
+                {
+                    this.Session["Error"] = "0";
+                    Response.Redirect("Login.aspx"); //Default
+                }
+
+                if (!IsPostBack)
+                {
+                    this.Session["IDSecuencia"] = "0";
+                    this.Session["IDProcedimiento"] = "0";
+                    //this.Session["DESARROLLO"] = "0";
+                    //ChkSlot.Visible = false;
+
+                    Variables.mensajeserver = "";
+                    if (txtQRCode.Text == "")
+                    {
+                        Nueva_Secuencia();
+                        txtQRCode.Text = "Seleccione un código de Lote";
+                        txtQRCodebis.Text = "Seleccione un código de Lote";
+                        txtQRCodebis.Visible = true;
+                        txtQRCode.Visible = false;
+
+                    }
+                    else
+                    {
+                        txtQRCodebis.Visible = false;
+                        txtQRCode.Visible = true;
+                    }
+
+                    Carga_Impresoras("0");
+
+
+                    this.Session["IDLote"] = "0";
+                    this.Session["IDLista"] = "0";
+                    try
+                    {
+                        if (this.Session["MiNivel"].ToString() == null)
+                        {
+                            LBCheck.Visible = false;
+                        }
+                        else
+                        {
+                            if (Convert.ToInt32(this.Session["MiNivel"].ToString()) == 9)
+                            {
+                                LBCheck.Visible = true;
+                                bool check01 = chkOnOff.Checked;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        LBCheck.Visible = false;
+                        this.Session["MiNivel"] = "0";
+                    }
+
+                }
+                else
+                {
+                    try
+                    {
+                        if (this.Session["IDSecuencia"].ToString() == null)
+                        {
+                            Response.Redirect("thEnd.aspx");
+                        }
+
+                        if (txtQRCode.Text == "")
+                        {
+                            txtQRCode.Text = "Seleccione un código de Lote";
+                            txtQRCodebis.Text = "Seleccione un código de Lote";
+                            txtQRCodebis.Visible = true;
+                            txtQRCode.Visible = false;
+                        }
+                        else
+                        {
+                            txtQRCodebis.Visible = false;
+                            txtQRCode.Visible = true;
+                        }
+                        try
+                        {
+                            if (this.Session["MiNivel"].ToString() == null)
+                            {
+                                LBCheck.Visible = false;
+                            }
+                            else
+                            {
+                                if (Convert.ToInt32(this.Session["MiNivel"].ToString()) == 9)
+                                {
+                                    LBCheck.Visible = true;
+                                    bool check01 = chkOnOff.Checked;
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            LBCheck.Visible = false;
+                            this.Session["MiNivel"] = "0";
+                        }
+                    }
+                    catch (NullReferenceException ex)
+                    {
+                        Lberror.Text += ex.Message;
+
+                        if (Session["Session"] == null)
+                        {
+                            Response.Redirect("Login.aspx");
+                        }
+                        else if (this.Session["Error"].ToString() == "0")
+                        {
+                            Response.Redirect("Login.aspx");
+                        }
+                        else
+                        {
+                            Response.Redirect("thEnd.aspx");
+                        }
+                    }
+                }
+
+                if (this.Session["DESARROLLO"].ToString() == "DESARROLLO")
+                {
+                    H3Titulo.Visible = false;
+                    H3Desarrollo.Visible = true;
+                }
+                else
+                {
+                    H3Titulo.Visible = true;
+                    H3Desarrollo.Visible = false;
+                }
+                dvPrinters.Visible = true;
+                dvDrlist.Visible = false;
+
+            }
+            catch(Exception ex)
+            {
+                if (this.Session["Error"].ToString() == "0")
+                {
+                    Response.Redirect("Login.aspx");
+                }
+                else
+                {
+                    Response.Redirect("thEnd.aspx");
+                }
+            }
+            dvDrlist.Visible = false;
+            dvPrinters.Visible = true;
+
+           // if (this.Session["MiNivel"].ToString() == "9") { btnRestoreTodo.Visible = true; }
+        }
+
+        protected void BtLinkNomina_Click(object sender, EventArgs e)
+        {
+            Response.Redirect("RecoNomina.aspx");
+        }
+
+        protected void checkListas_Click(object sender, EventArgs e)
+        {
+            if (chkOnOff.Checked == false)
+            {
+                //DrTransportista.Visible = false;
+
+            }
+            else
+            {
+
+            }
+        }
+
+
+        private void Nueva_Secuencia()
+        {
+            //DataTable dt3 = Main.CargaSecuencia().Tables[0];
+            DataTable dt3 = Main.CargaSCANform().Tables[0];
+            this.Session["Secuencias"] = dt3;
+            DrVariedad.Items.Clear();
+
+            DrVariedad.AppendDataBoundItems = true;
+            //DrVariedad.Items.Add("Seleccione un tipo de lote...");
+            //DrVariedad.DataValueField = "ZID";
+            //DrVariedad.DataTextField = "ZDESCRIPCION";
+            DrVariedad.Items.Add("Todos los Formularios");
+            DrVariedad.DataValueField = "ZID";
+            DrVariedad.DataTextField = "ZDESCRIPCION";
+
+            this.Session["IDProcedimiento"] = "0";
+
+            DrVariedad.DataSource = dt3;
+            DrVariedad.DataBind();
+
+            foreach (DataRow fila in dt3.Rows)
+            {
+                string miro = fila["ZDESCRIPCION"].ToString();
+                if(DrVariedad.SelectedItem.Text == "Todos los Formularios")
+                {
+                    this.Session["IDSecuencia"] = "1,2,3,4,5,6" ;
+                    break;
+                }
+                if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+                {
+                    this.Session["IDSecuencia"] = fila["ZID_SECUENCIA"].ToString();
+                    this.Session["IDProcedimiento"] = fila["ZID_PROCEDIMIENTO"].ToString();
+                    //this.Session["LaMascara"] = fila["ZMASCARA"].ToString();
+                    //GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
+                    break;
+                }
+            }
+            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+            //DrVariedad.Text = "";
+
+        }
+
+
+        private void Carga_Lotes2(string ID)
+        {
+            //Prueba con gold
+            string SQL = "SELECT * FROM IMPORTACION ";
+            DataTable dbA = Main.BuscaLoteGold(SQL).Tables[0];
+            DrScaneados.Items.Clear();
+            DrScaneados.DataValueField = "SERIE_LOTE";
+            DrScaneados.DataTextField = "ARTICULO";
+            // insertamos el elemento en la primera posicion:
+            DrScaneados.Items.Insert(0, new ListItem("Seleccionar Lote", ""));
+            DrScaneados.DataSource = dbA;
+            DrScaneados.DataBind();
+            DrScaneados.SelectedIndex = -1;
+            return;
+            //
+        }
+
+
+        private void Carga_Lotes3(string ID)
+        {
+            //Prueba con gold
+            string SQL = "SELECT * FROM IMPORTACION ";
+            DataTable dbA = Main.BuscaLoteReco(SQL).Tables[0];
+            DrScaneados.Items.Clear();
+            DrScaneados.DataValueField = "SERIE_LOTE";
+            DrScaneados.DataTextField = "ARTICULO";
+            // insertamos el elemento en la primera posicion:
+            DrScaneados.Items.Insert(0, new ListItem("Seleccionar Lote", ""));
+            DrScaneados.DataSource = dbA;
+            DrScaneados.DataBind();
+            DrScaneados.SelectedIndex = -1;
+            return;
+            //
+        }
+
+        private void Carga_Impresoras(string ID)
+        {
+            try
+            {
+                string SQL = "";
+                if (ID == "0")
+                {
+                    SQL = " SELECT DISTINCT(C.ZID) as IDPRINT, C.ZDESCRIPCION ";
+                    SQL += " FROM ZFORMULARIOS A ";
+                    SQL += " INNER JOIN ZPRINTERFORM B ON A.ZID = B.ZID_FORMULARIO ";
+                    SQL += " INNER JOIN ZPRINTER C ON B.ZID_PRINTER = C.ZID ";
+                }
+                else
+                {
+                    SQL = " SELECT DISTINCT(C.ZID) as IDPRINT, C.ZDESCRIPCION ,B.ZORDEN ";
+                    SQL += " FROM ZFORMULARIOS A ";
+                    SQL += " INNER JOIN ZPRINTERFORM B ON A.ZID = B.ZID_FORMULARIO ";
+                    SQL += " INNER JOIN ZPRINTER C ON B.ZID_PRINTER = C.ZID ";
+                    SQL += " WHERE A.ZID = '" + ID + "'";
+                    SQL += " ORDER BY B.ZORDEN ";
+                    //SQL = " SELECT DISTINCT(C.ZID) as IDPRINT, C.ZDESCRIPCION ";
+                    //SQL += " FROM ZFORMULARIOS A ";
+                    //SQL += " INNER JOIN ZPRINTERFORM B ON A.ZID = B.ZID_FORMULARIO ";
+                    //SQL += " INNER JOIN ZPRINTER C ON B.ZID_PRINTER = C.ZID ";
+                    //SQL += " WHERE A.ZID = '" + ID + "'";
+                }
+
+                DataTable dbB = Main.BuscaLote(SQL).Tables[0];
+                DrPrinters.Items.Clear();
+                DrPrinters.DataValueField = "IDPRINT";
+                DrPrinters.DataTextField = "ZDESCRIPCION";
+                DrPrinters.DataSource = dbB;
+                DrPrinters.DataBind();
+                Printers(DrPrinters.SelectedItem.Value);
+            }
+            catch (Exception ex)
+            {
+                Response.Redirect("thEnd.aspx");
+            }
+        }
+
+        private void Elimina_Procesados()
+        {
+            ////Cambia de tabla solo aquellos que se ajusten al formulario con estado a 2
+            ////Queda a 2 la ultima inserción para poder revertir la importacion
+            //try
+            //{
+            //    string SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.ESTADO ";
+            //    SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
+            //    SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+            //    SQL += " AND A.TIPO_FORM = B.ZTITULO ";
+            //    SQL += " AND A.ESTADO = 2 ";
+            //    DataTable dbB = Main.BuscaLote(SQL).Tables[0];
+
+            //    foreach (DataRow fila in dbB.Rows)
+            //    {
+            //        SQL = " INSERT INTO ZENTRADA_BORRADOS (ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
+            //        SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA) ";
+            //        SQL += " SELECT ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
+            //        SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA ";
+            //        SQL += " FROM ZENTRADA WHERE ID = " + fila["ID"].ToString();
+
+            //        DBHelper.ExecuteNonQuery(SQL);
+
+            //        SQL = " DELETE FROM ZENTRADA WHERE ID = " + fila["ID"].ToString();
+
+            //        DBHelper.ExecuteNonQuery(SQL);
+            //    }
+            //}
+            //catch(Exception ex)
+            //{
+            //    TextAlerta.Text = ex.Message;
+            //    alerta.Visible = true;
+            //}
+
+        }
+
+        private void Elimina_Borrados()
+        {
+            ////Cambia de tabla solo aquellos que se ajusten al formulario con estado a 2
+            ////Queda a 2 la ultima inserción para poder revertir la importacion
+            try
+            {
+                string SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.ESTADO ";
+                SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
+                SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+                SQL += " AND A.TIPO_FORM = B.ZTITULO ";
+                //SQL += " AND A.OBSERVACIONES LIKE 'BORRADO%' ";
+                SQL += " AND A.ID = " + TxtID.Text;
+                DataTable dbB = Main.BuscaLote(SQL).Tables[0];
+
+                foreach (DataRow fila in dbB.Rows)
+                {
+                    SQL = " INSERT INTO ZENTRADA_BORRADOS (ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
+                    SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA) ";
+                    SQL += " SELECT ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
+                    SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA ";
+                    SQL += " FROM ZENTRADA WHERE ID = " + fila["ID"].ToString();
+
+                    DBHelper.ExecuteNonQuery(SQL);
+
+                    SQL = " DELETE FROM ZENTRADA WHERE ID = " + fila["ID"].ToString();
+
+                    DBHelper.ExecuteNonQuery(SQL);
+                }
+            }
+            catch (Exception ex)
+            {
+                TextAlerta.Text = ex.Message;
+                alerta.Visible = true;
+            }
+
+        }
+
+
+        private void Carga_Lotes(string ID)
+        {
+            try
+            {
+                string SQL = "";
+
+
+                if (chkOnOff.Checked == true)
+                {
+                    if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
+                    {
+                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, REPLACE(REPLACE(A.LOTE, CHAR(10),''), CHAR(13),'') + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
+                        SQL += " FROM ZENTRADA A ";
+                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
+                        //SQL += " WHERE ";
+                        //SQL += " A.ESTADO is not null ";
+                    }
+                    else if (DrVariedad.SelectedItem.Value == "9") //Ventas
+                    {
+                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, REPLACE(REPLACE(A.LOTE, CHAR(10),''), CHAR(13),'') + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO + '    ' + A.HASTA  AS TODO ";
+                        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
+                        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+                        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
+                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
+                        //SQL += " AND A.ESTADO is not null ";
+                    }
+                    else
+                    {
+                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, REPLACE(REPLACE(A.LOTE, CHAR(10),''), CHAR(13),'') + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
+                        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
+                        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+                        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
+                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
+                        //SQL += " AND A.ESTADO is not null ";
+                    }
+                }
+                else
+                {
+                    if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
+                    {
+                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, REPLACE(REPLACE(A.LOTE, CHAR(10),''), CHAR(13),'') + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
+                        SQL += " FROM ZENTRADA A ";
+                        SQL += " WHERE ";
+                        SQL += "  (A.ESTADO <> '2' OR A.ESTADO is null) ";
+                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
+                    }
+                    else if (DrVariedad.SelectedItem.Value == "9") //Ventas
+                    {
+                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, REPLACE(REPLACE(A.LOTE, CHAR(10),''), CHAR(13),'') + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO + '    ' + A.HASTA  AS TODO ";
+                        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
+                        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+                        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
+                        SQL += " AND (A.ESTADO <> '2' OR A.ESTADO is null) ";
+                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
+                    }
+                    else
+                    {
+                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, REPLACE(REPLACE(A.LOTE, CHAR(10),''), CHAR(13),'') + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
+                        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
+                        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+                        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
+                        SQL += " AND (A.ESTADO <> '2' OR A.ESTADO is null) ";
+                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
+                    }
+                }
+
+
+                DataTable dbB = Main.BuscaLote(SQL).Tables[0];
+                DrLotes.Items.Clear();
+                DrLotes.DataValueField = "ID";
+                DrLotes.DataTextField = "TODO";
+                DrLotes.Items.Insert(0, new ListItem("Seleccionar Lote", ""));
+                DrLotes.DataSource = dbB;
+                DrLotes.DataBind();
+                DrLotes.SelectedIndex = -1;
+
+                this.SetDropDownListItemColor(dbB);
+
+                if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
+                {
+                    SQL = "SELECT LOTE, LOTEDESTINO, TIPO_FORM, COUNT(*) as total FROM ZENTRADA GROUP BY LOTE, LOTEDESTINO, TIPO_FORM HAVING COUNT(*) > 1";
+                }
+                else
+                {
+                    if (DrVariedad.SelectedItem.Value == "7")
+                    {
+                        SQL = "SELECT A.LOTE, COUNT(*) as total   ";
+                        SQL += " FROM ZENTRADA A, ZFORMULARIOS B ";
+                        SQL += " WHERE A.TIPO_FORM = B.ZTITULO ";
+                        SQL += " AND B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+                        SQL += " GROUP BY A.LOTE  ";
+                        SQL += " HAVING COUNT(A.LOTE) > 1";
+                    }
+                    else
+                    {
+                        SQL = "SELECT A.LOTE, A.TIPO_FORM, A.LOTEDESTINO, COUNT(*) as total ";
+                        SQL += " FROM ZENTRADA A, ZFORMULARIOS B ";
+                        SQL += " WHERE A.TIPO_FORM = B.ZTITULO ";
+                        SQL += " AND B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+                        SQL += " GROUP BY A.LOTE, A.TIPO_FORM, A.LOTEDESTINO ";
+                        SQL += " HAVING COUNT(A.LOTE) > 1";
+                    }
+                }
+
+                DataTable dbA = Main.BuscaLote(SQL).Tables[0];
+                if (dbA.Rows.Count == 0)
+                {
+                    LbDuplicados.Text = "No";
+                    LbDuplicados.ForeColor = Color.Black;
+                }
+                else
+                {
+                    foreach (DataRow fila in dbA.Rows)
+                    {
+                        if (DrVariedad.SelectedItem.Value == "7")
+                        {
+                            LbDuplicados.Text = "Si";
+                            LbDuplicados.ForeColor = Color.Green;
+                        }
+                        else
+                        {
+                            LbDuplicados.Text = "Si";
+                            LbDuplicados.ForeColor = Color.Red;
+                        }
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Response.Redirect("thEnd.aspx");
+            }
+        }
+
+        private void Actualiza_Lote()
+        {
+            string SQL = "";
+
+            if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
+            {
+                SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, A.LOTE + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
+                SQL += " FROM ZENTRADA A ";
+                SQL += " WHERE ";
+                SQL += "  (A.ESTADO <> '2' OR A.ESTADO is null) ";
+            }
+            else
+            {
+                SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, A.LOTE + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
+                SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
+                SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+                SQL += " AND A.TIPO_FORM = B.ZTITULO ";
+                if (chkOnOff.Checked == true)
+                {
+                    SQL += " AND A.ESTADO is not null ";
+                }
+                else
+                {
+                    SQL += " AND (A.ESTADO <> '2' OR A.ESTADO is null) ";
+                }
+            }
+            DataTable dbB = Main.BuscaLote(SQL).Tables[0];
+            this.SetDropDownListItemColor(dbB);
+        }
+
+        private void Carga_LotesScaneados(string ID)
+        {
+            //string SQL = "SELECT * FROM ZLOTESCREADOS  WHERE ZESTADO = 0 ";
+            try
+            {
+                string SQL = "SELECT * FROM ZLOTESCREADOS  WHERE ZESTADO = 0 ";
+                SQL += "AND ZID_SECUENCIA in (" + ID + ")";
+                SQL += " ORDER BY ZLOTE ";
+                DataTable dbA = Main.BuscaLote(SQL).Tables[0];
+                DrScaneados.Items.Clear();
+                DrScaneados.DataValueField = "ZID";
+                DrScaneados.DataTextField = "ZLOTE";
+                // insertamos el elemento en la primera posicion:
+                DrScaneados.Items.Insert(0, new ListItem("Seleccionar Lote", ""));
+                DrScaneados.DataSource = dbA;
+                DrScaneados.DataBind();
+                DrScaneados.SelectedIndex = -1;
+
+                ////SQL = "SELECT * FROM ZENTRADA  WHERE ESTADO IS NULL OR ESTADO ='0' AND ZID_SECUENCIA = " + ID;
+
+                ////SQL = " SELECT DISTINCT(B.ZLOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, B.ZID_SECUENCIA, A.TIPO_FORM, A.LOTE + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
+                ////SQL += " FROM ZENTRADA A, ZLOTESCREADOS B ";
+                ////SQL += " WHERE A.LOTE = B.ZLOTE ";
+                ////SQL += " AND B.ZID_SECUENCIA in (" + ID + ")";
+                ////SQL += " AND A.ESTADO <> '2' ";
+                //if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
+                //{
+                //    SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, A.LOTE + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
+                //    SQL += " FROM ZENTRADA A ";
+                //    SQL += " WHERE ";
+                //    SQL += "  (A.ESTADO <> '2' OR A.ESTADO is null) ";
+                //}
+                //else
+                //{
+                //    SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, A.LOTE + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
+                //    SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
+                //    SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+                //    SQL += " AND A.TIPO_FORM = B.ZTITULO ";
+                //    SQL += " AND (A.ESTADO <> '2' OR A.ESTADO is null) ";
+                //}
+
+
+                //DataTable dbB = Main.BuscaLote(SQL).Tables[0];
+                //DrLotes.Items.Clear();
+                //DrLotes.DataValueField = "ID";
+                //DrLotes.DataTextField = "TODO";
+                //DrLotes.Items.Insert(0, new ListItem("Seleccionar Lote", ""));
+                //DrLotes.DataSource = dbB;
+                //DrLotes.DataBind();
+                //DrLotes.SelectedIndex = -1;
+
+                //this.SetDropDownListItemColor(dbB);
+
+                //SQL = "SELECT LOTE, TIPO_FORM, COUNT(*) as total FROM ZENTRADA GROUP BY LOTE, TIPO_FORM HAVING COUNT(*) > 1";
+                //dbA = Main.BuscaLote(SQL).Tables[0];
+                //if (dbA.Rows.Count == 0)
+                //{
+                //    LbDuplicados.Text = "No";
+                //    LbDuplicados.ForeColor = Color.Black;
+                //}
+                //else
+                //{
+                //    LbDuplicados.Text = "Si";
+                //    LbDuplicados.ForeColor = Color.Red;
+                //}
+            }
+            catch (Exception ex)
+            {
+                Response.Redirect("thEnd.aspx");
+            }
+        }
+
+
+        private void SetDropDownListItemColor(DataTable dt)
+        {
+            foreach (ListItem item in DrLotes.Items)
+            {
+                foreach (DataRow fila in dt.Rows)
+                {
+                    if (fila["ID"].ToString() == item.Value)
+                    {
+                        if (fila["ESTADO"].ToString() == "0")
+                        {
+                            item.Attributes.CssStyle.Add("color", "green");
+                        }
+                        else if (fila["ESTADO"].ToString() == "1")
+                        {
+                            item.Attributes.CssStyle.Add("color", "orange");
+                        }
+                        else if (fila["ESTADO"].ToString() == "2")
+                        {
+                            item.Attributes.CssStyle.Add("color", "#21c9cf");
+                        }
+                        else
+                        {
+                            //item.Attributes.CssStyle.Add("color", "grey");
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+
+        private void GeneraSecuencia(string Dato, string Secuencia)
+        {
+            //La secuencia es =>   LITERAL#aaS;FECHA#mm;FECHA#dd;SECUENCIA#000
+            string Cadena = "";
+            string Miro = "";
+            try
+            {
+                string[] CadaLinea = System.Text.RegularExpressions.Regex.Split(Dato, ";");
+                foreach (string Linea in CadaLinea)
+                {
+                    if (Linea != "")
+                    {
+                        if (Linea.Contains("LITERAL#"))
+                        {
+                            Cadena += Linea.Replace("LITERAL#", "");
+                        }
+                        if (Linea.Contains("FECHA#"))
+                        {
+                            Miro = Linea.Replace("FECHA#", "");
+                            Miro = DateTime.Now.ToString(Miro);
+                            Cadena += Miro;
+                        }
+                        if (Linea.Contains("SECUENCIA#"))
+                        {
+                            Miro = Linea.Replace("SECUENCIA#", "");
+                            if (Miro != null)
+                            {
+                                Miro = Miro.Substring(0, Miro.Length - Secuencia.Length) + Secuencia.ToString();
+                                this.Session["NumeroSecuencia"] = Secuencia.ToString();
+                            }
+                            Cadena += Miro;
+                        }
+                    }
+                }
+                if (Cadena != "")
+                {
+                    txtQRCode.Text = Cadena;
+                    this.Session["LOTEenCURSO"] = Cadena;
+                    LbSecuenciaLote.Text = Cadena;
+                    LbSecuenciaLoteQR.Text = Cadena;
+                   
+                    btnGenerate_Click(null, null);
+                    LbCodigoLote.Text = "CÓDIGO LOTE:";
+                    //LbCodigoLoteQR.Text = "CÓDIGO LOTE 2:";
+
+
+                }
+
+            }
+            catch (NullReferenceException ex)
+            {
+                Lberror.Text += ex.Message;
+                //alertaErr.Visible = true;
+                //TextAlertaErr.Text = ex.Message;
+            }
+
+        }
+
+        private void Habilita_contoles()
+        {
+            TxtCampo.Enabled = true;
+            TxtFecha.Enabled = true;
+            TxtVariedad.Enabled = true;
+            TxtCajas.Enabled = true;
+            TxtPlantas.Enabled = true;
+            txtQRCode.Enabled = true;
+            TxtEstado.Enabled = true;
+            TxtDispositivo.Enabled = true;
+            //btnGenerate.Visible = true;
+            //btnNuevo.Visible = true;
+            //TxtID.Enabled = true;
+            TxtForm.Enabled = true;
+            TxtManojos.Enabled = true;
+            TxtDesde.Enabled = true;
+            TxtHasta.Enabled = true;
+            TxtETDesde.Enabled = true;
+            TxtETHasta.Enabled = true;
+            TxtTuneles.Enabled = true;
+            TxtPasillos.Enabled = true;
+            TxtLoteDestino.Enabled = true;
+            TxtObservaciones.Enabled = true;
+            TxtOK.Enabled = true;
+            //Oculta_Datos(1);
+        }
+
+        private void Deshabilita_contoles()
+        {
+            TxtCampo.Enabled = false;
+            TxtFecha.Enabled = false;
+            TxtVariedad.Enabled = false;
+            TxtCajas.Enabled = false;
+            TxtEstado.Enabled = false;
+            TxtDispositivo.Enabled = false;
+            TxtPlantas.Enabled = false;
+            txtQRCode.Enabled = false;
+            //btnGenerate.Visible = false;
+            //btnNuevo.Visible = false;
+            TxtID.Enabled = false;
+            TxtForm.Enabled = false;
+            TxtManojos.Enabled = false;
+            TxtDesde.Enabled = false;
+            TxtHasta.Enabled = false;
+            TxtETDesde.Enabled = false;
+            TxtETHasta.Enabled = false;
+            TxtTuneles.Enabled = false;
+            TxtPasillos.Enabled = false;
+            TxtObservaciones.Enabled = false;
+            TxtOK.Enabled = false;
+            TxtLoteDestino.Enabled = false;
+            //Oculta_Datos(0);
+
+        }
+        protected void btnValidaUser_Click(object sender, EventArgs e)
+        {
+
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+            H1Normal.Visible = false;
+            H1Seleccion.Visible = false;
+            H1Red.Visible = false;
+            H1Green.Visible = false;
+            string SQL = "";
+            //string SQL = "DELETE FROM ZENTRADA WHERE ID = " + LbIDLote.Text;
+            if(this.Session["IDLista"].ToString() == "Escaneados")
+            {
+                SQL = "UPDATE ZLOSTESCREADOS SET ESTADO = '2' ";
+                SQL += " WHERE ID = " + LbIDLote.Text;
+            }
+            else if (this.Session["IDLista"].ToString() == "Lotes")
+            {
+                SQL = "UPDATE ZENTRADA  SET ESTADO = '2' ";
+                SQL += " WHERE ID = " + LbIDLote.Text;
+            }
+
+            DBHelper.ExecuteNonQuery(SQL);
+            LimpiaCajas();
+            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+
+            txtQRCode.Text = "Seleccione de listas QR";
+
+            H1Normal.Visible = true;
+            DrPrinters_Click();
+
+            //DataSet ds = Login.ValidarUser(TextUser.Text, TextPass.Text);
+            //DataTable dt = ds.Tables[0];
+            //if (dt.Rows.Count == 0)
+            //{
+            //    if (txtQRCode.Text != "")
+            //    {
+            //        TextAlerta.Text = "El usuario no tiene permisos, pero puedes escanear el código QR desde Scan-IT con el Móvil, completar su registro en el formulario y enviarlo. Pulsa sobre este botón cuando lo envíes, para poder continuar.";
+            //        TextAlertaErr.Text += "";
+            //        alerta.Visible = true;
+            //        alertaErr.Visible = false;
+            //        alertaLog.Visible = false;
+            //        //btProcesa.Visible = true;
+            //        //btPorcesa.Visible = false;
+            //        Deshabilita_contoles();
+            //    }
+            //    else
+            //    {
+            //        TextAlerta.Text = "El usuario no tiene permisos para editar esta página.";
+            //        TextAlertaErr.Text += "";
+            //        alerta.Visible = true;
+            //        alertaErr.Visible = false;
+            //        alertaLog.Visible = false;
+            //        //btProcesa.Visible = false;
+            //        //btPorcesa.Visible = false;
+            //        Deshabilita_contoles();
+            //    }
+            //}
+            //else
+            //{
+            //    if (dt.Rows[0]["ZNIVEL"].ToString() != "9")
+            //    {
+            //        if (txtQRCode.Text != "")
+            //        {
+            //            TextAlerta.Text = "El usuario no tiene permisos suficientes para editar esta página, pero puedes escanear el código QR desde Scan-IT con el Móvil, completar su registro en el formulario y enviarlo. Pulsa sobre este botón cuando lo envíes, para poder continuar.";
+            //            TextAlertaErr.Text += "";
+            //            alerta.Visible = true;
+            //            alertaErr.Visible = false;
+            //            alertaLog.Visible = false;
+            //            //btProcesa.Visible = true;
+            //            //btPorcesa.Visible = false;
+            //            Deshabilita_contoles();
+            //        }
+            //        else
+            //        {
+            //            TextAlerta.Text = "El usuario no tiene permisos suficientes para editar esta página.";
+            //            TextAlertaErr.Text += "";
+            //            alerta.Visible = true;
+            //            alertaErr.Visible = false;
+            //            alertaLog.Visible = false;
+            //            //btProcesa.Visible = false;
+            //            //btPorcesa.Visible = false;
+            //            Deshabilita_contoles();
+            //        }
+            //    }
+            //    else
+            //    {
+            //        if (txtQRCode.Text != "")
+            //        {
+            //            TextAlerta.Text = "Se habilitarán los controles de la página para poder tratar con ellos. Ahora puedes escanear el código QR desde Scan-IT con el Móvil, completar su registro en el formulario y enviarlo. Pulsa sobre este botón cuando lo envíes, para poder continuar.";
+            //            TextAlertaErr.Text += "";
+            //            alerta.Visible = true;
+            //            alertaErr.Visible = false;
+            //            alertaLog.Visible = false;
+            //            //btProcesa.Visible = true;
+            //            //btPorcesa.Visible = false;
+            //            Habilita_contoles();
+            //        }
+            //        else
+            //        {
+            //            TextAlerta.Text = "Se habilitarán los controles de la página para poder tratar con ellos.";
+            //            TextAlertaErr.Text += "";
+            //            alerta.Visible = true;
+            //            alertaErr.Visible = false;
+            //            alertaLog.Visible = false;
+            //            //btProcesa.Visible = false;
+            //            //btPorcesa.Visible = false;
+            //            Habilita_contoles();
+            //        }
+            //    }
+            //}
+        }
+
+        private bool validateTime(string dateInString)
+        {
+            DateTime temp;
+            if (DateTime.TryParse(dateInString, out temp))
+            {
+                return true;
+            }
+            return false;
+        }
+
+
+        protected void btnModifica_Click(object sender, EventArgs e)
+        {
+            if(TxtID.Text == "")
+            {
+                alerta.Visible = true;
+                TextAlerta.Text = "Seleccione un código QR para poder modificar.";
+                return;
+            }
+            txtQRCodebis.Visible = false;
+            txtQRCode.Visible = true;
+
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+
+            BtGuardaLote.Visible = true;
+            BtModifica.Visible = false;
+            BtDelete.Enabled = false;
+            Habilita_contoles();
+            btnGenerate_Click(sender, e);
+            if (DrPrinters.SelectedItem.Value == "4")
+            {
+                btnGeneraTodoPerf_Click(sender, e);
+            }
+            else
+            {
+                btnGenerateTodo_Click(sender, e);
+            }
+            //btnGenerateTodo_Click(sender, e);
+
+
+            //Repara_Fecha(TxtFecha.Text);
+
+            //string SQL = "UPDATE ZENTRADA SET TIPO_FORM = '" + TxtForm.Text + "',";
+            //SQL += "FECHA ='" + TxtFecha.Text + "',";
+            //SQL += "TIPO_PLANTA ='" + TxtCampo.Text + "',";
+            //SQL += "VARIEDAD ='" + TxtVariedad.Text + "',";
+            //SQL += "LOTE ='" + txtQRCode.Text + "',";
+            //SQL += "UNIDADES ='" + TxtCajas.Text + "',";
+            //SQL += "NUM_UNIDADES ='" + TxtPlantas.Text + "',";
+            //SQL += "MANOJOS ='" + TxtManojos.Text + "',";
+            //SQL += "DESDE ='" + TxtDesde.Text + "',";
+            //SQL += "HASTA ='" + TxtHasta.Text + "',";
+            //SQL += "ETDESDE ='" + TxtETDesde.Text + "',";
+            //SQL += "ETHASTA ='" + TxtETHasta.Text + "',";
+            //SQL += "TUNELES ='" + TxtTuneles.Text + "',";
+            //SQL += "PASILLOS ='" + TxtPasillos.Text + "',";
+            //SQL += "OBSERVACIONES ='" + TxtObservaciones.Text + "',";
+            //SQL += "OK ='" + TxtOK.Text + "'";
+            //SQL += " WHERE ID = " + LbIDLote.Text;
+            //DBHelper.ExecuteNonQuery(SQL);
+
+            //LimpiaCajas();
+            //Carga_Lotes(this.Session["IDSecuencia"].ToString());
+
+        }
+        protected void btnDelete_Click(object sender, EventArgs e)
+        {
+            if (TxtID.Text == "")
+            {
+                alerta.Visible = true;
+                TextAlerta.Text = "Seleccione un código QR para poder eliminar.";
+                return;
+            }
+            txtQRCodebis.Visible = false;
+            txtQRCode.Visible = true;
+
+            if (BtModifica.Visible == true && TextAlertaLog.Text != "Segundo control de verificación. Este registro pasará su Estado ha eliminado. Si desea eliminar el registro vuelva a pulsar el botón eliminar")
+            {
+                TextAlertaLog.Text = "Segundo control de verificación. Este registro pasará su Estado ha eliminado. Si desea eliminar el registro vuelva a pulsar el botón eliminar";
+                alerta.Visible = false;
+                alertaErr.Visible = false;
+                alertaLog.Visible = true;
+                return;
+                
+                //btnValidaUser_Click(sender, e);
+            }
+            if (TextAlertaLog.Text == "Segundo control de verificación. Este registro pasará su Estado ha eliminado. Si desea eliminar el registro vuelva a pulsar el botón eliminar")
+            {
+                Elimina_Borrados();
+                alerta.Visible = false;
+                alertaErr.Visible = false;
+                alertaLog.Visible = false;
+            }
+        }
+
+        protected void BTerminado_Click(object sender, EventArgs e)
+        {
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+            BTerminado.Visible = false;
+            Btfin.Visible = true;
+
+            string SQL = "UPDATE ZENTRADA  SET ESTADO = '1' ";
+            SQL += " WHERE ID = " + LbIDLote.Text;
+            //DBHelper.ExecuteNonQuery(Variables.tipo, SQL, Variables.Miconexion, Variables.nomenclatura + "ZSECUENCIAS ");
+            DBHelper.ExecuteNonQuery(SQL);
+            //Btfin.Visible = true;
+            //BTerminado.Visible = false;
+            btnGenerate_Click(sender, e);
+            if (DrPrinters.SelectedItem.Value == "4")
+            {
+                btnGeneraTodoPerf_Click(sender, e);
+            }
+            else
+            {
+                btnGenerateTodo_Click(sender, e);
+            }
+            //btnGenerateTodo_Click(sender, e);
+
+            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+        }
+        protected void btnNew_Click(object sender, EventArgs e)
+        {
+
+            alerta.Visible = false;
+            alertaLog.Visible = false;
+            alertaErr.Visible = false;
+            //btProcesa.Visible = false;
+            //btPorcesa.Visible = false;
+            //btNew.Enabled = false;
+
+            string SQL = "SELECT ZSECUENCIA FROM ZSECUENCIAS  WHERE ZID = " + DrVariedad.SelectedItem.Value;
+            DataTable dbA = Main.BuscaLote(SQL).Tables[0];
+            foreach (DataRow fila in dbA.Rows)
+            {
+                this.Session["NumeroSecuencia"] = fila["ZSECUENCIA"].ToString();
+                break;
+            }
+
+            DataTable dt3 = Main.CargaSecuencia().Tables[0];
+            this.Session["Secuencias"] = dt3;
+            foreach (DataRow fila in dt3.Rows)
+            {
+                if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+                {
+                    this.Session["IDSecuencia"] = fila["ZID"].ToString();
+                    GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
+                    Carga_Lotes(this.Session["IDSecuencia"].ToString());
+                    Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+                    alerta.Visible = true;
+                    break;
+                }
+            }
+
+
+            //if (BtModifica.Visible == true)
+            //{
+            //    if (TxtForm.Enabled == true)
+            //    {
+            //        Oculta_Datos(1);
+            //    }
+            //    else
+            //    {
+            //        Oculta_Datos(0);
+            //    }
+
+            //    DataTable dt3 = Main.CargaSecuencia().Tables[0];
+            //    this.Session["Secuencias"] = dt3;
+            //    foreach (DataRow fila in dt3.Rows)
+            //    {
+            //        if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+            //        {
+            //            this.Session["IDSecuencia"] = fila["ZID"].ToString();
+            //            this.Session["LaMascara"] = fila["ZMASCARA"].ToString();
+            //            GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
+            //            break;
+            //        }
+            //    }
+
+            //}
+            //else
+            //{
+            //    string SQL = "INSERT INTO ZLOTESCREADOS (ZLOTE, ZFECHA, ZESTADO) ";
+            //    SQL += " VALUES ('" + txtQRCode.Text + "','" + DateTime.Now.ToString("dd-MM-yyyy") + "',0)";
+            //    DBHelper.ExecuteNonQuery(SQL);
+
+            //    if (TxtForm.Enabled == true)
+            //    {
+            //        Oculta_Datos(1);
+            //    }
+            //    else
+            //    {
+            //        Oculta_Datos(0);
+            //    }
+
+            //    //Nuevo numero de secuencia
+            //    if (DrVariedad.SelectedItem.Value == "-1")
+            //    {
+            //        alerta.Visible = true;
+            //        Nueva_Secuencia();
+            //    }
+            //    else
+            //    {
+            //        SQL = "SELECT ZSECUENCIA FROM ZSECUENCIAS  WHERE ZID = " + DrVariedad.SelectedItem.Value;
+            //        DataTable dbA = Main.BuscaLote(SQL).Tables[0];
+            //        foreach (DataRow fila in dbA.Rows)
+            //        {
+            //            this.Session["NumeroSecuencia"] = fila["ZSECUENCIA"].ToString();
+            //            break;
+            //        }
+
+            //        int AA = Convert.ToInt32(this.Session["NumeroSecuencia"].ToString()) + 1;
+            //        SQL = "UPDATE ZSECUENCIAS  SET ZSECUENCIA = '" + AA + "' ";
+            //        SQL += " WHERE ZID = " + DrVariedad.SelectedItem.Value;
+            //        //DBHelper.ExecuteNonQuery(Variables.tipo, SQL, Variables.Miconexion, Variables.nomenclatura + "ZSECUENCIAS ");
+            //        DBHelper.ExecuteNonQuery(SQL);
+            //        DataTable dt3 = Main.CargaSecuencia().Tables[0];
+            //        this.Session["Secuencias"] = dt3;
+            //        foreach (DataRow fila in dt3.Rows)
+            //        {
+            //            if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+            //            {
+            //                this.Session["IDSecuencia"] = fila["ZID"].ToString();
+            //                this.Session["LaMascara"] = fila["ZMASCARA"].ToString();
+            //                //GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
+            //                break;
+            //            }
+            //        }
+            //        GeneraSecuencia(this.Session["LaMascara"].ToString(), Convert.ToString(AA));
+            //    }
+            //}
+            //Carga_Lotes(this.Session["IDSecuencia"].ToString());
+
+        }
+
+        //protected void btnUser_Click(object sender, EventArgs e)
+        //{
+        //    if (TxtForm.Enabled == true)
+        //    {
+        //        Deshabilita_contoles();
+        //        Oculta_Datos(0);
+        //    }
+        //    else
+        //    {
+        //        TextAlertaLog.Text = "Deberá introducir un usuario con permisos para poder editar esta página:";
+        //        TextAlertaErr.Text = "";
+        //        TextAlerta.Text = "";
+        //        alerta.Visible = false;
+        //        alertaLog.Visible = true;
+        //        alertaErr.Visible = false;
+        //        //btProcesa.Visible = false;
+        //        //btPorcesa.Visible = false;
+        //        //BTerminado.Visible = false;
+        //        //Btfin.Visible = false;
+        //    }
+        //}
+        protected void btnNuevo_Click(object sender, EventArgs e)
+        {
+            if (DrVariedad.SelectedItem.Value == "-1")
+            {
+                alerta.Visible = true;
+                Nueva_Secuencia();
+            }
+            else
+            {
+                int AA = Convert.ToInt32(this.Session["NumeroSecuencia"].ToString()) + 1;
+                string SQL = "UPDATE ZSECUENCIAS  SET ZSECUENCIA = '" + AA + "' ";
+                SQL += " WHERE ZID = " + DrVariedad.SelectedItem.Value;
+                //DBHelper.ExecuteNonQuery(Variables.tipo, SQL, Variables.Miconexion, Variables.nomenclatura + "ZSECUENCIAS ");
+                DBHelper.ExecuteNonQuery(SQL);
+                DataTable dt3 = Main.CargaSecuencia().Tables[0];
+                this.Session["Secuencias"] = dt3;
+                GeneraSecuencia(this.Session["LaMascara"].ToString(), Convert.ToString(AA));
+            }
+        }
+        //protected void btnNuevoLote_Click(object sender, EventArgs e)
+        //{
+        //    //btnNuevoLote.Visible = false;
+        //    BtGuardaLote.Visible = true;
+        //    BtModifica.Visible = false;
+        //    BtCancelaLote.Visible = true;
+        //    BtDelete.Visible = false;
+        //    //btGeneraNew.Visible = true;
+        //    //Btfin.Visible = false;
+        //    //BTerminado.Visible = false;
+        //    LimpiaCajas();
+        //    TxtForm.Text = "Independiente";
+        //}
+
+        protected void btnCancelaLote_Click(object sender, EventArgs e)
+        {
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+
+            BtGuardaLote.Visible = false;
+            BtModifica.Visible = true;
+            BtDelete.Enabled = true;
+            Deshabilita_contoles();
+
+            //btnNuevoLote.Visible = true;
+            //BtGuardaLote.Visible = false;
+            //BtModifica.Visible = true;
+            //BtCancelaLote.Visible = false;
+            //btGeneraNew.Visible = false;
+            //BtDelete.Visible = true;
+        }
+
+        private void Repara_Fecha(string Fecha)
+        {
+            string Mdia = "";
+            string Mmes = "";
+            string Mano = "";
+            int a = 0;
+
+            if (TxtFecha.Text.Contains("/"))
+            {
+                string[] CadaLinea = System.Text.RegularExpressions.Regex.Split(TxtFecha.Text, "/");
+
+                foreach (string Linea in CadaLinea)
+                {
+                    if (a == 0) { Mdia = Linea; }
+                    if (a == 1) { Mmes = Linea; }
+                    if (a == 2)
+                    {
+                        Mano = Linea;
+                        TxtFecha.Text = Mano + "-" + Mmes + "-" + Mdia;
+                    }
+                }
+            }
+
+            if (TxtFecha.Text.Contains("/"))
+            {
+                string[] CadaLinea = System.Text.RegularExpressions.Regex.Split(TxtFecha.Text, "-");
+
+                foreach (string Linea in CadaLinea)
+                {
+                    if (a == 0) { Mdia = Linea; }
+                    if (a == 1) { Mmes = Linea; }
+                    if (a == 2)
+                    {
+                        Mano = Linea;
+                        TxtFecha.Text = Mano + "-" + Mmes + "-" + Mdia;
+                    }
+                }
+            }
+        }
+
+        private void Convierte_Fecha(string Fecha)
+        {
+            string Mdia = "";
+            string Mmes = "";
+            string Mano = "";
+            int a = 0;
+
+            if (TxtFecha.Text.Contains("/"))
+            {
+                string[] CadaLinea = System.Text.RegularExpressions.Regex.Split(TxtFecha.Text, "/");
+
+                foreach (string Linea in CadaLinea)
+                {
+                    if (a == 0) { Mdia = Linea; }
+                    if (a == 1) { Mmes = Linea; }
+                    if (a == 2)
+                    {
+                        Mano = Linea;
+                        TxtFecha.Text = Mano + Mmes + Mdia;
+                    }
+                }
+            }
+
+            if (TxtFecha.Text.Contains("/"))
+            {
+                string[] CadaLinea = System.Text.RegularExpressions.Regex.Split(TxtFecha.Text, "-");
+
+                foreach (string Linea in CadaLinea)
+                {
+                    if (a == 0) { Mdia = Linea; }
+                    if (a == 1) { Mmes = Linea; }
+                    if (a == 2)
+                    {
+                        Mano = Linea;
+                        TxtFecha.Text = Mano + Mmes + Mdia;
+                    }
+                }
+            }
+        }
+        protected void BtGuardaLote_Click(object sender, EventArgs e)
+        {
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+
+            DateTime dt;
+
+            //if (DateTime.TryParse(TxtFecha.Text, out dt))
+            //if (DateTime.TryParseExact(TxtFecha.Text, "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out dt))
+            //{
+            //    TextAlertaErr.Text = "El campo FECHA CORTE no contiene una fecha valida.";
+            //    TextAlerta.Text = "";
+            //    alertaLog.Visible = false;
+            //    alerta.Visible = false;
+            //    alertaErr.Visible = true;
+            //    return;
+            //}
+
+            Repara_Fecha(TxtFecha.Text);
+            txtQRCodebis.Visible = false;
+            txtQRCode.Visible = true;
+
+            //string SQL = "INSERT INTO ZENTRADA (TIPO_FORM, FECHA, TIPO_PLANTA, VARIEDAD, LOTE, UNIDADES, NUM_UNIDADES, MANOJOS, ";
+            //SQL += "DESDE, HASTA, ETDESDE, ETHASTA, TUNELES, PASILLOS, OBSERVACIONES, OK) ";
+            //SQL += " VALUES ('" + TxtForm.Text + "','" + TxtFecha.Text + "','" + TxtCampo.Text + "','" + TxtVariedad.Text + "','" + txtQRCode.Text + "','" + TxtCajas.Text + "',";
+            //SQL += "'" + TxtPlantas.Text + "','" + TxtManojos.Text + "','" + TxtDesde.Text + "','" + TxtHasta.Text + "','" + TxtETDesde.Text + "','" + TxtETHasta.Text + "',";
+            //SQL += "'" + TxtTuneles.Text + "','" + TxtPasillos.Text + "','" + TxtObservaciones.Text + "','" + TxtOK.Text + "')";
+
+            //DBHelper.ExecuteNonQuery(SQL);
+            //Si no modifica el estado y viene vacio, como existe el formulario en edicion añado un cero
+            if(TxtEstado.Text == "" || TxtEstado.Text == null)
+            {
+                TxtEstado.Text = "0";
+            }
+
+            string SQL = "";
+
+            if (this.Session["IDLista"].ToString() == "Escaneados")
+            {
+                SQL = "UPDATE ZLOTESCREADOS SET ZFECHA = '" + TxtFecha.Text + "',";
+                SQL += "LOTE ='" + txtQRCode.Text + "',";               
+                SQL += " WHERE ID = " + LbIDLote.Text;
+            }
+            else if (this.Session["IDLista"].ToString() == "Lotes")
+            {
+                SQL = "UPDATE ZENTRADA SET TIPO_FORM = '" + TxtForm.Text + "',";
+                SQL += "FECHA ='" + TxtFecha.Text + "',";
+                SQL += "TIPO_PLANTA ='" + TxtCampo.Text + "',";
+                SQL += "VARIEDAD ='" + TxtVariedad.Text + "',";
+                SQL += "LOTE ='" + txtQRCode.Text + "',";
+                SQL += "UNIDADES ='" + TxtCajas.Text + "',";
+                SQL += "NUM_UNIDADES ='" + TxtPlantas.Text + "',";
+                SQL += "MANOJOS ='" + TxtManojos.Text + "',";
+                SQL += "DESDE ='" + TxtDesde.Text + "',";
+                SQL += "HASTA ='" + TxtHasta.Text + "',";
+                SQL += "ETDESDE ='" + TxtETDesde.Text + "',";
+                SQL += "ETHASTA ='" + TxtETHasta.Text + "',";
+                SQL += "TUNELES ='" + TxtTuneles.Text + "',";
+                SQL += "PASILLOS ='" + TxtPasillos.Text + "',";
+                SQL += "OBSERVACIONES ='" + TxtObservaciones.Text + "',";
+                SQL += "LOTEDESTINO ='" + TxtLoteDestino.Text + "',";              
+                SQL += "OK ='" + TxtOK.Text + "',";
+                SQL += "ESTADO ='" + TxtEstado.Text + "',";
+                SQL += "DeviceName ='" + TxtDispositivo.Text + "'";
+                SQL += " WHERE ID = " + LbIDLote.Text;
+            }
+            DBHelper.ExecuteNonQuery(SQL);
+
+            btnCancelaLote_Click(sender, e);
+
+            //LimpiaCajas();
+
+
+
+            //Btfin.Visible = false;
+            //BTerminado.Visible = true;
+            btnGenerate_Click(sender, e);
+            if (DrPrinters.SelectedItem.Value == "4")
+            {
+                btnGeneraTodoPerf_Click(sender, e);
+            }
+            else
+            {
+                btnGenerateTodo_Click(sender, e);
+            }
+            //btnGenerateTodo_Click(sender, e);
+            alerta.Visible = false;
+            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+        }
+        protected void BTfin_Click(object sender, EventArgs e)
+        {
+
+        }
+        //protected void btnPorcesa_Click(object sender, EventArgs e)
+        //{
+        //    alerta.Visible = false;
+        //    alertaErr.Visible = false;
+        //    btnPrint2.Visible = false;
+        //    //BTerminado.Visible = false;
+        //    //Btfin.Visible = false;
+        //    //btProcesa.Visible = false;
+        //    //btPorcesa.Visible = false;
+        //    alertaLog.Visible = false;
+        //    //btNew.Enabled = false;
+
+        //    string SQL = "SELECT * FROM ZBANDEJAS  ";
+        //    DataTable dbP = Main.BuscaLote(SQL).Tables[0];
+
+
+        //    SQL = "SELECT * FROM ZLOTESCREADOS  WHERE ZLOTE = '" + txtQRCode.Text + "' ";
+        //    DataTable dbB = Main.BuscaLote(SQL).Tables[0];
+        //    //foreach (DataRow fila in dbB.Rows)
+        //    //{
+        //    //    btNew.Enabled = true;
+        //    //    break;
+        //    //}
+
+        //    Boolean Esta = false;
+        //    SQL = "SELECT * FROM ZENTRADA  WHERE LOTE = '" + txtQRCode.Text + "' ";
+        //    DataTable dbA = Main.BuscaLote(SQL).Tables[0];
+        //    foreach (DataRow fila in dbA.Rows)
+        //    {
+        //        if (fila["LOTE"].ToString() == txtQRCode.Text)
+        //        {
+        //            Esta = true;
+        //            LbIDLote.Text = fila["ID"].ToString();
+        //            this.Session["IDSecuencia"] = fila["ZID"].ToString();
+
+        //            TxtCampo.Text = fila["TIPO_PLANTA"].ToString();
+        //            TxtFecha.Text = fila["FECHA"].ToString();
+        //            TxtVariedad.Text = fila["VARIEDAD"].ToString();
+        //            TxtCajas.Text = fila["UNIDADES"].ToString();//* Tabla BANDEJAS 
+        //            TxtDesde.Text = fila["DESDE"].ToString();
+
+
+        //            TxtID.Text = fila["ID"].ToString();
+        //            TxtForm.Text = fila["TIPO_FORM"].ToString();
+        //            TxtManojos.Text = fila["MANOJOS"].ToString();
+        //            TxtDesde.Text = fila["DESDE"].ToString();
+        //            TxtHasta.Text = fila["HASTA"].ToString();
+        //            TxtETDesde.Text = fila["ETDESDE"].ToString();
+        //            TxtETHasta.Text = fila["ETHASTA"].ToString();
+        //            TxtTuneles.Text = fila["TUNELES"].ToString();
+        //            TxtPasillos.Text = fila["PASILLOS"].ToString();
+        //            TxtObservaciones.Text = fila["OBSERVACIONES"].ToString();
+        //            TxtOK.Text = fila["OK"].ToString();
+
+
+
+        //            if (TxtCajas.Text == "CAJAS")
+        //            {
+        //                //LbnumeroPlantas.Text = "Número de Cajas:";
+        //                LbCajasS.Text = "Unidades: " + fila["UNIDADES"].ToString() + " " + fila["NUM_UNIDADES"].ToString(); // fila["UNIDADES"].ToString();
+        //                LbPlantasS.Text = "Nº Plantas: " + fila["NUM_UNIDADES"].ToString();
+
+        //            }
+        //            if (TxtCajas.Text == "PLANTAS")
+        //            {
+        //                //LbnumeroPlantas.Text = "Número de Plantas:";
+        //                LbCajasS.Text = "Unidades: " + fila["UNIDADES"].ToString();
+        //                LbPlantasS.Text = "Nº Plantas: " + fila["NUM_UNIDADES"].ToString();
+        //            }
+
+        //            TxtPlantas.Text = fila["NUM_UNIDADES"].ToString();
+        //            LbCampoS.Text = "CAMPO O SECTOR: " + fila["DESDE"].ToString();
+        //            try
+        //            {
+        //                foreach (DataRow fila2 in dbP.Rows)
+        //                {
+        //                    if (fila2["ZTIPO_PLANTA"].ToString() == fila["TIPO_PLANTA"].ToString() && fila2["ZTIPO_FORMATO"].ToString() == fila["UNIDADES"].ToString())
+        //                    {
+        //                        if (fila["UNIDADES"].ToString() == "PLANTAS")
+        //                        {
+        //                            LbPlantasS.Text = "Nº Plantas: " + fila["NUM_UNIDADES"].ToString();
+        //                            break;
+        //                        }
+        //                        else if (fila["UNIDADES"].ToString() == "CAJAS")
+        //                        {
+        //                            if (fila["MANOJOS"].ToString() == "0" || fila["MANOJOS"].ToString() == "" || fila["MANOJOS"].ToString() == null)
+        //                            {
+        //                                LbPlantasS.Text = "Nº Plantas: " + (Convert.ToInt32(fila["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+        //                            }
+        //                            else
+        //                            {
+        //                                foreach (DataRow fila3 in dbP.Rows)
+        //                                {
+        //                                    if (fila3["ZTIPO_PLANTA"].ToString() == fila["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
+        //                                    {
+        //                                        int NN = Convert.ToInt32(fila["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
+        //                                        LbPlantasS.Text = "Nº Plantas: " + ((Convert.ToInt32(fila["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+        //                                        break;
+        //                                    }
+        //                                }
+        //                            }
+        //                            break;
+        //                        }
+        //                    }
+        //                }
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                Lberror.Text = ex.Message;
+        //            }
+        //            LbPlantaS.Text = "TIPO PLANTA: " + fila["TIPO_PLANTA"].ToString();
+        //            LbFechaS.Text = "FECHA CORTE: " + fila["FECHA"].ToString();
+        //            LbVariedadS.Text = "VARIEDAD: " + fila["VARIEDAD"].ToString();
+
+        //            //if (TxtID.Enabled == true)
+        //            //{
+        //            //    Oculta_Datos(1);
+        //            //}
+        //            //else
+        //            //{
+        //            //    Oculta_Datos(0);
+        //            //}
+
+        //            Lbcompleto.Text = "QR COMPLETO";
+        //            this.Session["Procesa"] = "1";
+        //            btnGenerate_Click(sender, e);
+        //            btnGenerateTodo_Click(sender, e);
+        //            this.Session["Procesa"] = "0";
+        //            //if (fila["ESTADO"].ToString() == "" || fila["ESTADO"].ToString() == null)
+        //            //{
+        //            //    BTerminado.Visible = true;
+        //            //}
+        //            //else
+        //            //{
+        //            //    Btfin.Visible = true;
+        //            //}
+        //            break;
+        //        }
+        //    }
+        //    if (Esta == false)
+        //    {
+        //        H1Normal.Visible = false;
+        //        H1Seleccion.Visible = false;
+        //        H1Red.Visible = true;
+        //        H1Green.Visible = false;
+
+        //        //HLoteProceso.InnerText = "Código QR YA ASIGNADO, PENDIENTE PROCESAR";
+        //        //HLoteProceso.Attributes.Add("style", "color: red; font-weight:bold;");
+
+        //        btnGenerate_Click(sender, e);
+        //        TextAlertaErr.Text = "Aún no se encuentra el código de lote en la base de datos para formularios de Scan-IT. Genere el registro del formulario desde el Móvil, " + Environment.NewLine;
+        //        TextAlertaErr.Text += "para este Código QR que se presenta en pantalla y, una vez enviado, pulse nuevamente sobre este botón. O no haga nada, siga con otros lotes," + Environment.NewLine;
+        //        TextAlertaErr.Text += "pues este ha quedado guardado en la lista '2', y una vez se introduzca el formulario correspondiente lo encontrará en la lista '1'" + Environment.NewLine;
+        //        TextAlerta.Text = "";
+        //        alertaLog.Visible = false;
+        //        alerta.Visible = false;
+        //        alertaErr.Visible = true;
+        //        btProcesa.Visible = false;
+        //        btPorcesa.Visible = true;
+        //    }
+        //    else
+        //    {
+        //        SQL = "UPDATE ZLOTESCREADOS SET ZESTADO = 1 WHERE ZLOTE = '" + txtQRCode.Text + "' ";
+        //        DBHelper.ExecuteNonQuery(SQL);
+        //        //alerta.Visible = false;
+        //        //alertaErr.Visible = false;
+        //    }
+        //    if(btNew.Enabled == false)
+        //    {
+        //        SQL = "INSERT INTO ZLOTESCREADOS (ZLOTE, ZFECHA, ZESTADO, ZID_SECUENCIA) ";
+        //        SQL += " VALUES ('" + txtQRCode.Text + "','" + DateTime.Now.ToString("dd-MM-yyyy") + "',0," + DrVariedad.SelectedItem.Value + ")";
+        //        DBHelper.ExecuteNonQuery(SQL);
+
+        //        SQL = "SELECT ZSECUENCIA FROM ZSECUENCIAS  WHERE ZID = " + DrVariedad.SelectedItem.Value;
+        //        DataTable dbC = Main.BuscaLote(SQL).Tables[0];
+        //        foreach (DataRow fila in dbC.Rows)
+        //        {
+        //            this.Session["NumeroSecuencia"] = fila["ZSECUENCIA"].ToString();
+        //            break;
+        //        }
+
+        //        int AA = Convert.ToInt32(this.Session["NumeroSecuencia"].ToString()) + 1;
+        //        SQL = "UPDATE ZSECUENCIAS  SET ZSECUENCIA = '" + AA + "' ";
+        //        SQL += " WHERE ZID = " + DrVariedad.SelectedItem.Value;
+        //        DBHelper.ExecuteNonQuery(SQL);
+        //        btNew.Enabled = true;
+        //    }
+
+        //    Carga_Lotes(this.Session["IDSecuencia"].ToString());
+        //}
+
+        protected void btnGeneraNew_Click(object sender, EventArgs e)
+        {
+            btnGenerate_Click(sender, e);
+            if (DrPrinters.SelectedItem.Value == "4")
+            {
+                btnGeneraTodoPerf_Click(sender, e);
+            }
+            else
+            {
+                btnGenerateTodo_Click(sender, e);
+            }
+            //btnGenerateTodo_Click(sender, e);
+        }           
+        protected void btnGenerate_Click(object sender, EventArgs e)
+        {
+            //Genera la secuencia QR de la etiqueta Lote
+            if (this.Session["Procesa"].ToString() == "0")
+            {
+                H1Normal.Visible = false;
+                H1Seleccion.Visible = true;
+                H1Red.Visible = false;
+                H1Green.Visible = false;
+                DrPrinters_Click();
+
+                if (DrPrinters.SelectedItem.Value == "1")
+                {
+                    btnPrintA2.Visible = true;
+                }
+                else
+                {
+                    btnPrintB2.Visible = true;
+                }
+
+                //HLoteProceso.InnerText = "Código QR seleccionado";
+                //HLoteProceso.Attributes.Add("style", "color: black; font-weight:bold;");
+
+                Lbcompleto.Text = "";
+                alerta.Visible = false;
+                alertaErr.Visible = false;
+                //TextAlerta.Text = "Ahora puedes escanear el código QR desde Scan-IT con el Móvil, completar su registro en el formulario y enviarlo. Pulsa sobre este botón cuando lo envíes, para poder continuar.";
+                //alerta.Visible = true;
+                alertaLog.Visible = false;
+                btnPrint2.Visible = false;
+                //btProcesa.Visible = true;
+                //btPorcesa.Visible = false;
+                //BTerminado.Visible = false;
+            }
+
+            string code = txtQRCode.Text;
+            LbSecuenciaLote.Text = code;
+            LbSecuenciaLoteQR.Text = code;
+            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            QRCodeGenerator.QRCode qrCode = qrGenerator.CreateQrCode(code, QRCodeGenerator.ECCLevel.M);
+            System.Web.UI.WebControls.Image imgBarCode = new System.Web.UI.WebControls.Image();
+            try
+            {
+                if (DrPrinters.SelectedItem.Value == "2" )
+                {
+                    imgBarCode.Height =150;
+                    imgBarCode.Width = 150;
+                }
+                else if (DrPrinters.SelectedItem.Value == "6")
+                {
+                    imgBarCode.Height = 250;
+                    imgBarCode.Width = 250;
+                }
+                else
+                {
+                    imgBarCode.Height = 200; //Convert.ToInt32(TxAlto.Text);
+                    imgBarCode.Width = 200; //Convert.ToInt32(TxAncho.Text);
+                }
+            }
+            catch (Exception a)
+            {
+                if (DrPrinters.SelectedItem.Value == "2")
+                {
+                    imgBarCode.Height = 150;
+                    imgBarCode.Width = 150;
+                }
+                else if (DrPrinters.SelectedItem.Value == "6")
+                {
+                    imgBarCode.Height = 250;
+                    imgBarCode.Width = 250;
+                }
+                else
+                {
+                    TextAlertaErr.Text = "El valor de las medidas para la imagen QR Lote no son correctas. Se establece por defecto a 300 X 300 pixeles. El Error :" + a.Message;
+                    //TxAlto.Text = "300";
+                    //TxAncho.Text = "300";
+                    alertaErr.Visible = true;
+                }
+            }
+            using (Bitmap bitMap = qrCode.GetGraphic(40))
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    bitMap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    byte[] byteImage = ms.ToArray();
+                    imgBarCode.ImageUrl = "data:image/png;base64," + Convert.ToBase64String(byteImage);
+                }
+                if (DrPrinters.SelectedItem.Value == "1" || DrPrinters.SelectedItem.Value == "4")
+                {
+                    PlaceHolder1.Controls.Add(imgBarCode);
+                }
+                if (DrPrinters.SelectedItem.Value == "2")
+                {
+                    PlaceHolderQR.Controls.Add(imgBarCode);
+                }
+                if (DrPrinters.SelectedItem.Value == "3")
+                {
+                    pnlContentsFT.Controls.Add(imgBarCode);
+                }
+                if (DrPrinters.SelectedItem.Value == "6")
+                {
+                    PlaceHolderPaletAlv.Controls.Add(imgBarCode);
+                }
+            }
+
+            LbCodigoLote.Text = "CÓDIGO LOTE:";
+            //LbCodigoLoteQR.Text = "CÓDIGO LOTE 2:";
+            //Comentar en produccion
+            //btnGenerateTodo_Click(sender, e);
+        }
+
+        protected void btnGeneraTodoPerf_Click(object sender, EventArgs e)
+        {
+            string code = "";
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+            if (DrPrinters.SelectedItem.Value == "4")
+            {
+                //code += Label6.Text + TxtVariedad.Text + Environment.NewLine;
+                //LbVariedadS.Text = Label6.Text + " " + TxtVariedad.Text;
+                code += TxtVariedad.Text + Environment.NewLine;
+                LbVariedadS.Text = Label6.Text + " " + TxtVariedad.Text;
+            }
+            else
+            {
+                code += LbDesde.Text + TxtDesde.Text + Environment.NewLine;
+                LbCampoS.Text = LbDesde.Text + " " + TxtDesde.Text;
+                code += Label4.Text + TxtCampo.Text + Environment.NewLine;
+                LbPlantaS.Text = Label4.Text + " " + TxtCampo.Text;
+                code += Label5.Text + TxtFecha.Text + Environment.NewLine;
+                code += Label6.Text + TxtVariedad.Text + Environment.NewLine;
+                LbVariedadS.Text = Label6.Text + " " + TxtVariedad.Text;
+                code += LbCajasS.Text + Environment.NewLine;
+                code += LbPlantasS.Text + Environment.NewLine;
+            }
+
+
+            H1Normal.Visible = false;
+            H1Seleccion.Visible = false;
+            H1Red.Visible = false;
+            H1Green.Visible = true;
+            DrPrinters_Click();
+
+            TextAlertaErr.Text = "";
+ 
+
+            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            QRCodeGenerator.QRCode qrCode = qrGenerator.CreateQrCode(code, QRCodeGenerator.ECCLevel.M);
+            System.Web.UI.WebControls.Image imgBarCode = new System.Web.UI.WebControls.Image();
+
+            try
+            {
+                imgBarCode.Height = 200; //Convert.ToInt32(TxAltoT.Text);
+                imgBarCode.Width = 200; //Convert.ToInt32(TxAnchoT.Text);
+            }
+            catch (Exception a)
+            {
+                TextAlertaErr.Text = "El valor de las medidas para la imagen QR Total no son correctas. Se establece por defecto a 200 X 200 pixeles. El Error :" + a.Message;
+                //TxAltoT.Text = "200";
+                //TxAnchoT.Text = "200";
+                alertaErr.Visible = true;
+            }
+
+            using (Bitmap bitMap = qrCode.GetGraphic(40))
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    bitMap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    byte[] byteImage = ms.ToArray();
+                    imgBarCode.ImageUrl = "data:image/png;base64," + Convert.ToBase64String(byteImage);
+                }
+                PlaceHolder2.Controls.Add(imgBarCode);
+            }
+        }
+
+        protected void btnGenerateTodo_Click(object sender, EventArgs e)
+        {
+            string code = "";
+            string CodigoError = "";
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+
+            if (TxtDesde.Text == "")
+            {
+                LbCampoS.Text = "";
+                //LbCampoSQR.Text = "";
+                LbFechaS.Text = "";
+                //LbFechaSQR.Text = "";
+                LbVariedadS.Text = "";
+                //LbVariedadSQR.Text = "";
+                LbCajasS.Text = "";
+                //LbCajasSQR.Text = "";
+                LbPlantasS.Text = "";
+                //LbPlantasSQR.Text = "";
+                LbPlantaS.Text = "";
+                //LbPlantaSQR.Text = "";
+                CodigoError += " Campo o Sector,";
+            }
+            else
+            {
+                code += LbDesde.Text + TxtDesde.Text + Environment.NewLine;
+                LbCampoS.Text = LbDesde.Text + " " + TxtDesde.Text;
+                //LbCampoSQR.Text = LbDesde.Text + " " + TxtDesde.Text;
+            }
+
+            if (TxtCampo.Text == "")
+            {
+                LbCampoS.Text = "";
+                //LbCampoSQR.Text = "";
+                LbFechaS.Text = "";
+                //LbFechaSQR.Text = "";
+                LbVariedadS.Text = "";
+                //LbVariedadSQR.Text = "";
+                LbCajasS.Text = "";
+                //LbCajasSQR.Text = "";
+                LbPlantasS.Text = "";
+                //LbPlantasSQR.Text = "";
+                LbPlantaS.Text = "";
+                //LbPlantaSQR.Text = "";
+                CodigoError += " Tipo Plantas,";
+            }
+            else
+            {
+                code += Label4.Text + TxtCampo.Text + Environment.NewLine;
+                LbPlantaS.Text = Label4.Text + " " + TxtCampo.Text;
+                //LbPlantaSQR.Text = Label4.Text + " " + TxtCampo.Text;
+            }
+
+            if (TxtFecha.Text == "")
+            {
+                LbCampoS.Text = "";
+                //LbCampoSQR.Text = "";
+                LbFechaS.Text = "";
+                //LbFechaSQR.Text = "";
+                LbVariedadS.Text = "";
+                //LbVariedadSQR.Text = "";
+                LbCajasS.Text = "";
+                //LbCajasSQR.Text = "";
+                LbPlantasS.Text = "";
+                //LbPlantasSQR.Text = "";
+                LbPlantaS.Text = "";
+                //LbPlantaSQR.Text = "";
+                CodigoError += " Fecha Corte,";
+            }
+            else
+            {
+                code += Label5.Text + TxtFecha.Text + Environment.NewLine;
+                //LbFechaS.Text = Label5.Text + " " + TxtFecha.Text;
+
+
+                if (TxtFecha.Text != "")
+                {
+                    LbFechaS.Text = Label5.Text + " " + TxtFecha.Text.ToString().Substring(0, 10);
+                }
+                else
+                {
+                    LbFechaS.Text = Label5.Text + " " + TxtFecha.Text;
+                }
+            }
+
+            if (TxtVariedad.Text == "")
+            {
+                LbCampoS.Text = "";
+                //LbCampoSQR.Text = "";
+                LbFechaS.Text = "";
+                //LbFechaSQR.Text = "";
+                LbVariedadS.Text = "";
+                //LbVariedadSQR.Text = "";
+                LbCajasS.Text = "";
+                //LbCajasSQR.Text = "";
+                LbPlantasS.Text = "";
+                //LbPlantasSQR.Text = "";
+                LbPlantaS.Text = "";
+                //LbPlantaSQR.Text = "";
+                CodigoError += " Variedad,";
+            }
+            else
+            {
+                code += Label6.Text + TxtVariedad.Text + Environment.NewLine;
+                LbVariedadS.Text = Label6.Text + " " + TxtVariedad.Text;
+            }
+
+            if (TxtCajas.Text == "")
+            {
+                LbCampoS.Text = "";
+                //LbCampoSQR.Text = "";
+                LbFechaS.Text = "";
+                //LbFechaSQR.Text = "";
+                LbVariedadS.Text = "";
+                //LbVariedadSQR.Text = "";
+                LbCajasS.Text = "";
+                //LbCajasSQR.Text = "";
+                LbPlantasS.Text = "";
+                //LbPlantasSQR.Text = "";
+                LbPlantaS.Text = "";
+                //LbPlantaSQR.Text = "";
+
+                CodigoError += " Número Cajas,";
+            }
+            else
+            {
+                //code += Label7.Text + TxtCajas.Text + Environment.NewLine;
+                //LbCajasS.Text = Label7.Text + " " + TxtCajas.Text;
+                code += LbCajasS.Text + Environment.NewLine;
+                //LbCajasS.Text = Label7.Text + " " + TxtCajas.Text;
+            }
+
+            if (TxtPlantas.Text == "")
+            {
+                LbCampoS.Text = "";
+                //LbCampoSQR.Text = "";
+                LbFechaS.Text = "";
+                //LbFechaSQR.Text = "";
+                LbVariedadS.Text = "";
+                //LbVariedadSQR.Text = "";
+                LbCajasS.Text = "";
+                //LbCajasSQR.Text = "";
+                LbPlantasS.Text = "";
+                //LbPlantasSQR.Text = "";
+                LbPlantaS.Text = "";
+                //LbPlantaSQR.Text = "";
+                CodigoError += " Número Plantas,";
+            }
+            else
+            {
+                code += LbPlantasS.Text + Environment.NewLine;
+                //LbPlantasS.Text = LbnumeroPlantas.Text + " " + TxtPlantas.Text;
+                //code += LbnumeroPlantas.Text + TxtPlantas.Text + Environment.NewLine;
+                //LbPlantasS.Text = LbnumeroPlantas.Text + " " + TxtPlantas.Text;
+            }
+
+            if (DrPrinters.SelectedItem.Value == "6")
+            {
+                code = TxtVariedad.Text; // + Environment.NewLine;
+            }
+
+
+            //if (CodigoError != "")
+            //{
+            //    //No se puede generar el código QR total por tener los campos siguientes vacios: CodigoError
+            //    TextAlertaErr.Text = "No se puede generar el código QR total por tener los campos siguientes vacios: " + CodigoError;
+            //    TextAlertaErr.Text += "Genere un registro desde formularios de Scan-IT desde el Móvil, envielo y pruebe nuevamente desde este botón. " + CodigoError;
+            //    TextAlerta.Text = "";
+            //    alertaErr.Visible = true;
+            //    btnPrint2.Visible = false;
+            //    //BTerminado.Visible = false;
+            //    //btProcesa.Visible = true;
+            //    return;
+            //}
+            //else
+            //{
+                H1Normal.Visible = false;
+                H1Seleccion.Visible = false;
+                H1Red.Visible = false;
+                H1Green.Visible = true;
+                DrPrinters_Click();
+
+                //HLoteProceso.InnerText = "Código QR PROCESADO";
+                //HLoteProceso.Attributes.Add("style", "color: LimeGreen; font-weight:bold;");
+
+                //TextAlerta.Text = "Ahora puedes imprimir el código QR para el palet.";
+                TextAlertaErr.Text = "";
+                //alerta.Visible = true;
+                //btnPrint2.Visible = true;
+                //btProcesa.Visible = false;
+                //BTerminado.Visible = true;
+            //}
+            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            QRCodeGenerator.QRCode qrCode = qrGenerator.CreateQrCode(code, QRCodeGenerator.ECCLevel.M);
+            System.Web.UI.WebControls.Image imgBarCode = new System.Web.UI.WebControls.Image();
+
+            try
+            {
+                if (DrPrinters.SelectedItem.Value == "6")
+                {
+                    imgBarCode.Height = 100;
+                    imgBarCode.Width = 100;
+                }
+                else
+                {
+                    imgBarCode.Height = 200; // Convert.ToInt32(TxAltoT.Text);
+                    imgBarCode.Width = 200; //Convert.ToInt32(TxAnchoT.Text);
+                }
+
+            }
+            catch (Exception a)
+            {
+                TextAlertaErr.Text = "El valor de las medidas para la imagen QR Total no son correctas. Se establece por defecto a 200 X 200 pixeles. El Error :" + a.Message;
+                //TxAltoT.Text = "200";
+                //TxAnchoT.Text = "200";
+                alertaErr.Visible = true;
+            }
+
+            using (Bitmap bitMap = qrCode.GetGraphic(40))
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    bitMap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    byte[] byteImage = ms.ToArray();
+                    imgBarCode.ImageUrl = "data:image/png;base64," + Convert.ToBase64String(byteImage);
+                }
+
+                //if (DrPrinters.SelectedItem.Value == "1")
+                //{
+                //PlaceHolder2.Controls.Add(imgBarCode);
+                //}
+                //if (DrPrinters.SelectedItem.Value == "2")
+                //{
+                //    PlaceHolderQR.Controls.Add(imgBarCode);
+                //}
+                //if (DrPrinters.SelectedItem.Value == "3")
+                //{
+                //    pnlContentsFT.Controls.Add(imgBarCode);
+                //}
+                if (DrPrinters.SelectedItem.Value == "6")
+                {
+
+                    PlaceHolderPaletAlvMin.Controls.Add(imgBarCode);
+                }
+                else
+                {
+                    PlaceHolder2.Controls.Add(imgBarCode);
+                }
+            }
+        }
+
+        private void BuscaDuplicados()
+        {
+
+        }
+        private void LimpiaCajas()
+        {
+            try
+            {
+                txtQRCode.Text = "";
+                TxtCampo.Text = "";
+                TxtFecha.Text = "";
+                TxtVariedad.Text = "";
+                TxtCajas.Text = "";
+                TxtPlantas.Text = "";
+                LbCampoS.Text = "";
+                LbFechaS.Text = "";
+                //LbFechaSQR.Text = "";
+                LbPlantaS.Text = "";
+                //LbPlantaSQR.Text = "";
+                LbVariedadS.Text = "";
+                //LbVariedadSQR.Text = "";
+                LbCajasS.Text = "";
+                //LbCajasSQR.Text = "";
+                LbPlantasS.Text = "";
+                //LbPlantasSQR.Text = "";
+                Lbcompleto.Text = "";
+                LbSecuenciaLote.Text = "";
+                LbSecuenciaLoteQR.Text = "";
+                TxtEstado.Text = "";
+                TxtDispositivo.Text = "";
+                TxtLoteDestino.Text = "";
+
+                LbCodeQRPalteAlv.Text = "";
+                LbTipoPlantaP.Text = "";
+                LbVariedadP.Text = "";
+                LbVariedadS.Text = "";
+                lbUnidadesP.Text = "";
+                lbNumPlantasP.Text = "";
+
+                TxtID.Text = "";
+                TxtForm.Text = "";
+                TxtManojos.Text = "";
+                TxtDesde.Text = "";
+                TxtHasta.Text = "";
+                TxtETDesde.Text = "";
+                TxtETHasta.Text = "";
+                TxtTuneles.Text = "";
+                TxtPasillos.Text = "";
+                TxtObservaciones.Text = "";
+                TxtOK.Text = "";
+                LbCodigoLote.Text = "SIN CÓDIGO LOTE";
+                //LbCodigoLoteQR.Text = "SIN CÓDIGO LOTE 2";
+            }
+            catch (NullReferenceException ex)
+            {
+                Lberror.Text += ex.Message;
+                //alertaErr.Visible = true;
+                //TextAlertaErr.Text = ex.Message;
+            }
+        }
+
+        //private void Oculta_Datos(int Ve)
+        //{
+        //    try
+        //    {
+        //        if (Ve == 0)
+        //        {
+        //            //LbID.Visible = false;
+        //            //TxtID.Visible = false;
+        //            //LbForm.Visible = false;
+        //            //TxtForm.Visible = false;
+        //            ////LbManojo.Visible = false;
+        //            ////TxtManojos.Visible = false;
+        //            ////LbDesde.Visible = false;
+        //            ////TxtDesde.Visible = false;
+        //            //LbHasta.Visible = false;
+        //            //TxtHasta.Visible = false;
+        //            //LbETDesde.Visible = false;
+        //            //TxtETDesde.Visible = false;
+        //            //LbETHasta.Visible = false;
+        //            //TxtETHasta.Visible = false;
+        //            //LbTuneles.Visible = false;
+        //            //TxtTuneles.Visible = false;
+        //            //LbPasillos.Visible = false;
+        //            //TxtPasillos.Visible = false;
+        //            //LbObservaciones.Visible = false;
+        //            //TxtObservaciones.Visible = false;
+        //            //LbOK.Visible = false;
+        //            //TxtOK.Visible = false;
+        //            //btnNuevoLote.Visible = false;
+        //            BtDelete.Visible = false;
+        //            BtModifica.Visible = false;
+        //            LimpiaCajas();
+        //            //BTerminado.Visible = false;
+        //            //Btfin.Visible = false;
+        //        }
+        //        else
+        //        {
+        //            //LbID.Visible = true;
+        //            //TxtID.Visible = true;
+        //            //LbForm.Visible = true;
+        //            //TxtForm.Visible = true;
+        //            ////LbManojo.Visible = true;
+        //            ////TxtManojos.Visible = true;
+        //            ////LbDesde.Visible = true;
+        //            ////TxtDesde.Visible = true;
+        //            //LbHasta.Visible = true;
+        //            //TxtHasta.Visible = true;
+        //            //LbETDesde.Visible = true;
+        //            //TxtETDesde.Visible = true;
+        //            //LbETHasta.Visible = true;
+        //            //TxtETHasta.Visible = true;
+        //            //LbTuneles.Visible = true;
+        //            //TxtTuneles.Visible = true;
+        //            //LbPasillos.Visible = true;
+        //            //TxtPasillos.Visible = true;
+        //            //LbObservaciones.Visible = true;
+        //            //TxtObservaciones.Visible = true;
+        //            //LbOK.Visible = true;
+        //            //TxtOK.Visible = true;
+        //            if (TxtForm.Enabled == true)
+        //            {
+        //                //btnNuevoLote.Visible = true;
+        //                BtDelete.Visible = true;
+        //                BtModifica.Visible = true;
+        //            }
+        //        }
+        //    }
+        //    catch (NullReferenceException ex)
+        //    {
+        //        Lberror.Text += ex.Message;
+        //        //alertaErr.Visible = true;
+        //        //TextAlertaErr.Text = ex.Message;
+
+        //    }
+        //}
+
+        //Llenando un DropDownList mediante Columnas Combinadas en ASP .NET
+        //// Hace referencia al DataTable obtenido
+        //DataTable dtAutores = dsAutores.Tables["Authors"];
+        //// Crea la nueva DataColumn
+        //DataColumn dcNombre = new DataColumn("name", Type.GetType("System.String"));
+        //// Establece la sentencia a calcular con las columnas existentes
+        //dcNombre.Expression = "au_fname + ' ' + au_lname";
+        //  // Agrega la nueva columna al DataTable
+        //  dtAutores.Columns.Add(dcNombre);
+        //  // Asigna el DataTable Autores como fuente de datos para el DropDownList
+        //  ddlComputedColumns.DataSource = dtAutores.DefaultView;
+        //  // Asigno el valor a mostrar en el DropDownList
+        //  ddlComputedColumns.DataTextField = "name";
+        //  // Asigno el valor del value en el DropDownList
+        //  ddlComputedColumns.DataValueField = "au_id";
+        //  // Llena el DropDownList con los datos
+        //  ddlComputedColumns.DataBind();
+
+
+
+        //otra
+        //    string str = ConfigurationManager.ConnectionStrings["ConnectionString"].ConnectionString;
+        //    using (SqlConnection con = new SqlConnection(str))
+        //    {
+        //        con.Open();
+        //        using (SqlCommand cmd = new SqlCommand("select * from Info ", con))
+        //        {
+        //            SqlDataReader rdr = cmd.ExecuteReader();
+        //            while (rdr.Read())
+        //            {
+        //                String text = String.Format("{0}|{1}|{2}\n",
+        //                    rdr.GetString(1).PadRight(20, '\u00A0'),
+        //                    rdr.GetString(2).PadRight(20, '\u00A0'),
+        //                    rdr.GetString(3).PadRight(20, '\u00A0'));
+        //                    DropDownList1.Items.Add(text.ToString());
+        //            }
+        //        }
+        //    }
+
+        protected void btnRestoreTodo_Click(object sender, EventArgs e)
+        {
+
+            //DBHelper.RevierteProcedureVentas("");
+
+            return;
+
+            //alerta.Visible = false;
+            //alertaErr.Visible = false;
+            //alertaLog.Visible = false;
+            //BTerminado.Visible = false;
+            //Btfin.Visible = false;
+            ////if (LbIDLote.Text == "") { return; }
+            //string SQL = "";
+
+            //DataTable dt3 = Main.CargaSCANform().Tables[0];
+
+            //foreach (DataRow fila in dt3.Rows)
+            //{
+            //    if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
+            //    {
+            //        SQL = "UPDATE ZENTRADA SET ESTADO = '0' ";
+            //        SQL += " WHERE ESTADO <> '2'";
+            //        DBHelper.ExecuteNonQuery(SQL);
+            //        break;
+            //    }
+
+            //    if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+            //    {
+            //        SQL = "UPDATE ZENTRADA SET ESTADO = '0' ";
+            //        SQL += " WHERE TIPO_FORM = '" + fila["ZTITULO"].ToString() + "'";
+            //        SQL += " AND ESTADO <> '2'" ;
+            //        DBHelper.ExecuteNonQuery(SQL);
+            //        break;
+            //    }
+            //}
+
+            //Carga_Lotes(this.Session["IDSecuencia"].ToString());
+            //Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+
+            //BtFinalizalote.Text = "Finaliza este Lote";
+            //BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
+            //BtFinalizalote.Enabled = false;
+            //if (DrVariedad.SelectedItem.Value == "5")
+            //{
+            //    BtEnviaFinalizados.Enabled = false;
+            //}
+            //else
+            //{
+            //    BtEnviaFinalizados.Enabled = true;
+            //}
+            ////BtEnviaFinalizados.Enabled = true;
+
+        }
+
+
+
+        protected void btnRestore_Click(object sender, EventArgs e)
+        {
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+            BTerminado.Visible = false;
+            Btfin.Visible = false;
+            //if(LbIDLote.Text == "") { return; }
+            string SQL = "UPDATE ZENTRADA  SET ESTADO = '0' ";
+            SQL += " WHERE ID = " + LbIDLote.Text;
+            //DBHelper.ExecuteNonQuery(Variables.tipo, SQL, Variables.Miconexion, Variables.nomenclatura + "ZSECUENCIAS ");
+            DBHelper.ExecuteNonQuery(SQL);
+            //Btfin.Visible = true;
+            //BTerminado.Visible = false;
+
+            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+
+            BtFinalizalote.Text = "Finaliza este Lote";
+            BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
+            BtFinalizalote.Enabled = false;
+            if (DrVariedad.SelectedItem.Value == "5")
+            {
+                BtEnviaFinalizados.Enabled = false;
+            }
+            else
+            {
+                BtEnviaFinalizados.Enabled = true;
+            }
+            //BtEnviaFinalizados.Enabled = true;
+
+        }
+
+
+        protected void DrDuplicados_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            //BuscaLote(string SQL)
+
+        }
+
+        protected void DrVariedad_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+            txtQRCodebis.Visible = false;
+            txtQRCode.Visible = true;
+
+            LimpiaCajas();
+            btnCancelaLote_Click(sender, e);
+            DataTable dt = Main.CargaSCANform().Tables[0];
+            H1Normal.Visible = true;
+            H1Seleccion.Visible = false;
+            H1Red.Visible = false;
+            H1Green.Visible = false;
+            //BtnLanzaPro.Visible = false;
+            BTerminado.Visible = false;
+            Btfin.Visible = false;
+
+            //try
+            //{
+                if (dt == null)
+                {
+                    DataTable dt3 = Main.CargaSCANform().Tables[0];
+
+                    foreach (DataRow fila in dt3.Rows)
+                    {
+                        if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
+                        {
+                            this.Session["IDSecuencia"] = "1,2,3,4,5,6";
+                            LbCodigoLote.Text = "SIN CÓDIGO LOTE";
+                            //LbCodigoLoteQR.Text = "SIN CÓDIGO LOTE 2";
+                            txtQRCode.Text = "Seleccione un código de Lote";
+                            txtQRCodebis.Text = "Seleccione un código de Lote";
+                            txtQRCodebis.Visible = true;
+                            txtQRCode.Visible = false;
+                            Carga_Impresoras("0");
+                            DrPrinters_Click();
+
+                            this.Session["IDProcedimiento"] = "0";
+                            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+                            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+                            //Carga_Impresoras("0");
+                            break;
+                        }
+
+                        if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+                        {
+                            this.Session["IDSecuencia"] = fila["ZSECUENCIAS"].ToString();
+                            Carga_Impresoras(fila["ZID"].ToString());
+                            DrPrinters_Click();
+
+                            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+                            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+                            this.Session["IDProcedimiento"] = fila["ZID_PROCEDIMIENTO"].ToString();
+                            //if (fila["ZID"].ToString().ToString() == "1" || fila["ZID"].ToString().ToString() == "3")
+                            //{
+                            //    BtnLanzaPro.Visible = true;
+                            //}
+
+                            if(DrVariedad.SelectedItem.Value == "5")
+                            {
+                                BtEnviaFinalizados.Enabled = false;
+                            }
+                            else
+                            {
+                                BtEnviaFinalizados.Enabled = true;
+                            }
+                            LbCodigoLote.Text = "SIN CÓDIGO LOTE";
+                            //LbCodigoLoteQR.Text = "SIN CÓDIGO LOTE 2";
+                            txtQRCode.Text = "Seleccione Lote formulario";
+                            txtQRCodebis.Text = "Seleccione Lote formulario";
+                            txtQRCodebis.Visible = true;
+                            txtQRCode.Visible = false;
+                            //Carga_Impresoras(fila["ZID"].ToString());
+
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (DataRow fila in dt.Rows)
+                    {
+                        if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
+                        {
+                            this.Session["IDSecuencia"] = "1,2,3,4,5,6";
+                            LbCodigoLote.Text = "SIN CÓDIGO LOTE";
+                            //LbCodigoLoteQR.Text = "SIN CÓDIGO LOTE 2";
+                            txtQRCode.Text = "Seleccione un código de Lote";
+                            txtQRCodebis.Text = "Seleccione un código de Lote";
+                            txtQRCodebis.Visible = true;
+                            txtQRCode.Visible = false;
+                            Carga_Impresoras(fila["ZID"].ToString());
+                            DrPrinters_Click();
+
+                            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+                            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+                            this.Session["IDProcedimiento"] = "0";
+                            //Carga_Impresoras(fila["ZID"].ToString());
+                            break;
+                        }
+                        string miro = fila["ZID"].ToString();
+                        if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+                        {
+                            this.Session["IDSecuencia"] = fila["ZSECUENCIAS"].ToString();
+                            Carga_Impresoras(fila["ZID"].ToString());
+                            DrPrinters_Click();
+
+                            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+                            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+                            this.Session["IDProcedimiento"] = fila["ZID_PROCEDIMIENTO"].ToString();
+                            LbCodigoLote.Text = "SIN CÓDIGO LOTE";
+                            //LbCodigoLoteQR.Text = "SIN CÓDIGO LOTE 2";
+                            txtQRCode.Text = "Seleccione Lote formulario " ;
+                            txtQRCodebis.Text = "Seleccione Lote formulario" ;
+                            txtQRCodebis.Visible = true;
+                            txtQRCode.Visible = false;
+                            if (DrVariedad.SelectedItem.Value == "5")
+                            {
+                                BtEnviaFinalizados.Enabled = false;
+                            }
+                            else
+                            {
+                                BtEnviaFinalizados.Enabled = true;
+                            }
+                            //Carga_Impresoras(fila["ZID"].ToString());
+                            break;
+                        }
+                    }
+                }
+            //}
+            //catch (Exception Ex)
+            //{
+            //    alertaErr.Visible = true;
+            //    TextAlertaErr.Text = Ex.Message;
+            //}
+            //H1Normal.Visible = true;
+            //DrPrinters_Click();
+        }
+
+
+        //protected void DrVariedad_SelectedIndexChanged(object sender, EventArgs e)
+        //{
+        //    alerta.Visible = false;
+        //    alertaErr.Visible = false;
+        //    alertaLog.Visible = false;
+        //    txtQRCodebis.Visible = false;
+        //    txtQRCode.Visible = true;
+
+        //    LimpiaCajas();
+        //    btnCancelaLote_Click(sender, e);
+        //    DataTable dt = Main.CargaSCANform().Tables[0];
+        //    Boolean Esta = false;
+        //    H1Normal.Visible = false;
+        //    H1Seleccion.Visible = false;
+        //    H1Red.Visible = false;
+        //    H1Green.Visible = false;
+        //    BtnLanzaPro.Visible = false;
+        //    BTerminado.Visible = false;
+        //    Btfin.Visible = false;
+
+        //    try
+        //    {
+        //        if (dt == null)
+        //        {
+        //            DataTable dt3 = Main.CargaSCANform().Tables[0];
+        //            foreach (DataRow fila in dt3.Rows)
+        //            {
+        //                if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+        //                {
+        //                    this.Session["IDSecuencia"] = fila["ZID"].ToString();
+        //                    Carga_Lotes(fila["ZID"].ToString());
+        //                    //if (fila["ZID"].ToString().ToString() == "1" || fila["ZID"].ToString().ToString() == "3")
+        //                    //{
+        //                    //    BtnLanzaPro.Visible = true;
+        //                    //}
+
+        //                    if (fila["ZDESCRIPCION"].ToString() == "Seleccione un tipo de lote...")
+        //                    {
+        //                        LbCodigoLote.Text = "SIN CÓDIGO LOTE";
+        //                        txtQRCode.Text = "Seleccione un Tipo de Lote";
+        //                        txtQRCodebis.Text = "Seleccione un Tipo de Lote";
+        //                        txtQRCodebis.Visible = true;
+        //                        txtQRCode.Visible = false;
+        //                        Esta = true;
+        //                    }
+        //                    else
+        //                    {
+        //                        LbCodigoLote.Text = "CÓDIGO LOTE:";
+        //                        txtQRCode.Text = "Seleccione de listas QR";
+        //                        txtQRCodebis.Text = "Seleccione de listas QR";
+        //                        txtQRCodebis.Visible = true;
+        //                        txtQRCode.Visible = false;
+
+        //                        Esta = true;
+        //                    }
+
+        //                    if(Esta == false)
+        //                    {
+        //                        txtQRCode.Text = "Seleccione un Tipo de Lote";
+        //                        txtQRCodebis.Text = "Seleccione un Tipo de Lote";
+        //                        txtQRCodebis.Visible = true;
+        //                        txtQRCode.Visible = false;
+
+        //                    }
+        //                    break;
+        //                }
+        //            }
+        //        }
+        //        else
+        //        {
+        //            foreach (DataRow fila in dt.Rows)
+        //            {
+        //                if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+        //                {
+        //                    this.Session["IDSecuencia"] = fila["ZID"].ToString();
+        //                    Carga_Lotes(fila["ZID"].ToString());
+
+        //                    //if (fila["ZID"].ToString().ToString() == "1" || fila["ZID"].ToString().ToString() == "3")
+        //                    //{
+        //                    //    BtnLanzaPro.Visible = true;
+        //                    //}
+
+        //                    if (fila["ZDESCRIPCION"].ToString() == "Seleccione un tipo de lote...")
+        //                    {
+        //                        LbCodigoLote.Text = "SIN CÓDIGO LOTE";
+        //                        txtQRCode.Text = "Seleccione un Tipo de Lote";
+        //                        txtQRCodebis.Text = "Seleccione un Tipo de Lote";
+        //                        txtQRCodebis.Visible = true;
+        //                        txtQRCode.Visible = false;
+        //                        Esta = true;
+        //                    }
+        //                    else
+        //                    {
+        //                        LbCodigoLote.Text = "CÓDIGO LOTE:";
+        //                        txtQRCode.Text = "Seleccione de listas QR";
+        //                        txtQRCodebis.Text = "Seleccione de listas QR";
+        //                        txtQRCodebis.Visible = true;
+        //                        txtQRCode.Visible = false;
+        //                        Esta = true;
+        //                    }
+
+
+        //                    break;
+        //                }
+        //            }
+        //        }
+        //    }
+        //    catch(Exception Ex)
+        //    {
+        //        alertaErr.Visible = true;
+        //        TextAlertaErr.Text = Ex.Message;
+        //    }
+        //    H1Normal.Visible = true;
+
+        //    if (Esta == false)
+        //    {
+        //        txtQRCode.Text = "Seleccione un Tipo de Lote";
+        //        txtQRCodebis.Text = "Seleccione un Tipo de Lote";
+        //        txtQRCodebis.Visible = true;
+        //        txtQRCode.Visible = false;
+        //    }
+
+        //    //try
+        //    //{
+
+        //    //    DataTable dt = Main.CargaSecuencia().Tables[0];
+
+        //    //    //DataTable dt = this.Session["Secuencias"] as DataTable;
+        //    //    //if (dt == null)
+        //    //    //{
+        //    //    //    DataTable dt3 = Main.CargaSecuencia().Tables[0];
+        //    //    //    foreach (DataRow fila in dt3.Rows)
+        //    //    //    {
+        //    //    //        if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+        //    //    //        {
+
+        //    //    //            if (fila["ZDESCRIPCION"].ToString() == "Seleccione un tipo de lote...")
+        //    //    //            {
+        //    //    //                btNew.Enabled = false;
+        //    //    //                LbCodigoLote.Text = "SIN CÓDIGO LOTE";
+        //    //    //            }
+        //    //    //            else
+        //    //    //            {
+        //    //    //                GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
+        //    //    //                btNew.Enabled = true;
+        //    //    //                LbCodigoLote.Text = "CÓDIGO LOTE:";
+        //    //    //                Carga_Lotes();
+        //    //    //            }
+        //    //    //            break;
+        //    //    //        }
+        //    //    //    }
+        //    //    //}
+        //    //    //else
+        //    //    //{
+        //    //    Esta = false;
+        //    //    foreach (DataRow fila in dt.Rows)
+        //    //    {
+        //    //        if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
+        //    //        {
+        //    //            this.Session["IDSecuencia"] = fila["ZID"].ToString();
+
+        //    //            if (fila["ZDESCRIPCION"].ToString() == "Seleccione un tipo de lote...")
+        //    //            {
+        //    //                //lbBuscaCod.Text = "Códigos QR:";
+        //    //                //btNew.Enabled = false;
+        //    //                Esta = false;
+        //    //                LbCodigoLote.Text = "SIN CÓDIGO LOTE";
+        //    //            }
+        //    //            else
+        //    //            {
+        //    //                //lbBuscaCod.Text = "Códigos QR con Tipo Lote " + fila["ZDESCRIPCION"].ToString() + ":";
+        //    //                //lbBuscaCod.Text = "Códigos QR:";
+        //    //                GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
+        //    //                //btNew.Enabled = false;
+        //    //                LbCodigoLote.Text = "CÓDIGO LOTE:";
+        //    //                Esta = true;
+        //    //                Carga_Lotes(fila["ZID"].ToString());
+        //    //                H1Normal.Visible = false;
+        //    //                H1Seleccion.Visible = true;
+        //    //                H1Red.Visible = false;
+        //    //                H1Green.Visible = false;
+        //    //            }
+
+        //    //            break;
+        //    //        }
+        //    //    }
+        //    //    if (Esta == false)
+        //    //    {
+        //    //        //btNew.Enabled = false;
+        //    //        //BTerminado.Visible = false;
+        //    //        LbSecuenciaLote.Text = "";
+        //    //        LbCodigoLote.Text = "SIN CÓDIGO LOTE";
+        //    //        txtQRCode.Text = "";
+        //    //        alerta.Visible = false;
+        //    //        alertaErr.Visible = false;
+        //    //        alertaLog.Visible = false;
+        //    //        LbCampoS.Text = "";
+        //    //        LbFechaS.Text = "";
+        //    //        LbPlantaS.Text = "";
+        //    //        LbVariedadS.Text = "";
+        //    //        LbCajasS.Text = "";
+        //    //        LbPlantasS.Text = "";
+        //    //        TxtCampo.Text = "";
+        //    //        TxtFecha.Text = "";
+        //    //        TxtVariedad.Text = "";
+        //    //        TxtCajas.Text = "";
+        //    //        TxtPlantas.Text = "";
+        //    //        DrLotes.Items.Clear();
+        //    //        LbDuplicados.Text = "No";
+        //    //        LbDuplicados.ForeColor = Color.Black;
+
+        //    //        H1Normal.Visible = true;
+        //    //        H1Seleccion.Visible = false;
+        //    //        H1Red.Visible = false;
+        //    //        H1Green.Visible = false;
+        //    //        //lbBuscaCod.Text = "Códigos QR:";
+        //    //    }
+
+        //    //}
+        //    //catch (NullReferenceException ex)
+        //    //{
+        //    //    Lberror.Text += ex.Message;
+        //    //    //alerta.Visible = true;
+        //    //    //TextAlertaErr.Text = ex.Message;
+        //    //}
+        //    //}
+        //}
+
+        protected void BtFinalizalote_Click(object sender, EventArgs e)
+        {
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+            BTerminado.Visible = false;
+            Btfin.Visible = false;
+
+            string SQL = "UPDATE ZENTRADA  SET ESTADO = '1' ";
+            SQL += " WHERE ID = " + LbIDLote.Text;
+            //DBHelper.ExecuteNonQuery(Variables.tipo, SQL, Variables.Miconexion, Variables.nomenclatura + "ZSECUENCIAS ");
+            DBHelper.ExecuteNonQuery(SQL);
+            //Btfin.Visible = true;
+            //BTerminado.Visible = false;
+            btnGenerate_Click(sender, e);
+            if (DrPrinters.SelectedItem.Value == "4")
+            {
+                btnGeneraTodoPerf_Click(sender, e);
+            }
+            else 
+            {
+                btnGenerateTodo_Click(sender, e);
+            }
+                   
+            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+
+            BtFinalizalote.Text = "Lote Finalizado";
+            BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
+            BtFinalizalote.Enabled = false;
+            if (DrVariedad.SelectedItem.Value == "5")
+            {
+                BtEnviaFinalizados.Enabled = false;
+            }
+            else
+            {
+                BtEnviaFinalizados.Enabled = true;
+            }
+            //BtEnviaFinalizados.Enabled = true;
+
+        }
+
+        protected void BtFinalizaTodos_Click(object sender, EventArgs e)
+        {
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+            BTerminado.Visible = false;
+            Btfin.Visible = false;
+            string SQL = "";
+
+            if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
+            {
+                SQL = " UPDATE ZENTRADA SET ESTADO = '1' WHERE ESTADO <> '2' OR ESTADO is null";
+            }
+            else
+            {
+                SQL = " UPDATE A ";
+                SQL += " SET A.ESTADO = '1' ";
+                SQL += " FROM ZENTRADA  A, (SELECT ZTITULO ";
+                SQL += " FROM ZFORMULARIOS ";
+                SQL += " WHERE ZDESCRIPCION = '" + DrVariedad.SelectedItem.Text + "') C ";
+                SQL += " WHERE A.TIPO_FORM = C.ZTITULO ";
+                SQL += " AND (A.ESTADO <> '2' OR A.ESTADO is null) ";
+            }
+
+            DBHelper.ExecuteNonQuery(SQL);
+            //Btfin.Visible = true;
+            //BTerminado.Visible = false;
+            if (TxtID.Text == "")
+            { }
+            else 
+            {
+                btnGenerate_Click(sender, e);
+                if (DrPrinters.SelectedItem.Value == "4")
+                {
+                    btnGeneraTodoPerf_Click(sender, e);
+                }
+                else
+                {
+                    btnGenerateTodo_Click(sender, e);
+                }
+                //btnGenerateTodo_Click(sender, e);
+            }
+
+            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+
+            BtFinalizalote.Text = "Lote Finalizado";
+            BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
+            BtFinalizalote.Enabled = false;
+            if (DrVariedad.SelectedItem.Value == "5")
+            {
+                BtEnviaFinalizados.Enabled = false;
+            }
+            else
+            {
+                BtEnviaFinalizados.Enabled = true;
+            }
+            //BtEnviaFinalizados.Enabled = true;
+
+        }
+
+        protected void BtEnviaFinalizados_Click(object sender, EventArgs e)
+        {
+            //Prueba Gold
+            // Carga_Lotes2("1");
+            Variables.mensajeserver = "";
+
+            //Elimina_Procesados(); crea un historico y libera la tabla
+
+            // Para todos ExecuteNQProcedureAll
+            string miro = this.Session["IDProcedimiento"].ToString();
+
+            //ProdTip
+            if (this.Session["IDProcedimiento"].ToString() == "2")
+            {
+                try
+                {
+                    DBHelper.ExecuteNonQueryProcedure("");
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - ExecuteNonQueryProcedure--> " + ex.Message);
+                    TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+                try
+                {
+                    DBHelper.MigraProcedure("");
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - MigraProcedure--> " + ex.Message);
+                    TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+                alerta.Visible = true;
+                TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
+                Variables.mensajeserver = "";
+                //BtnLanzaPro.Visible = false;
+                //}
+            }
+            //PinchAlv, PinchAlvCab, PinchAlvLin
+            else if (this.Session["IDProcedimiento"].ToString() == "3")
+            {
+                try
+                {
+                    DBHelper.ExecuteNonQueryProcedurePinch("");
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - ExecuteNonQueryProcedurePinch--> " + ex.Message);
+                    TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+                try
+                {
+                    DBHelper.MigraProcedurePinchAlb("");
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - MigraProcedurePinchAlb--> " + ex.Message);
+                    TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+                alerta.Visible = true;
+                TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
+                Variables.mensajeserver = "";
+                //BtnLanzaPro.Visible = false;
+                //
+            }
+            //ModAlv
+            else if (this.Session["IDProcedimiento"].ToString() == "1")
+            {
+                try
+                {
+                    DBHelper.ExecuteNonQueryProcedureModAlv("");
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - ExecuteNonQueryProcedureModAlv--> " + ex.Message);
+                    TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+                try
+                {
+                    DBHelper.MigraProcedureModAlv("");
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - MigraProcedureModAlv--> " + ex.Message);
+                    TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+                alerta.Visible = true;
+                TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
+                Variables.mensajeserver = "";
+                //BtnLanzaPro.Visible = false;
+                //}
+            }
+            //PaletAlv
+            else if (this.Session["IDProcedimiento"].ToString() == "4")
+            {
+                try
+                {
+                    DBHelper.ExecuteNonQueryProcedurePaletAlv("");
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - ExecuteNonQueryProcedurePaletAlv --> " + ex.Message);
+                    TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+                try
+                {
+                    DBHelper.MigraProcedurePaletAlv("");
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - MigraProcedurePaletAlv --> " + ex.Message);
+                    TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+                alerta.Visible = true;
+
+                TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
+                Variables.mensajeserver = "";
+                //BtnLanzaPro.Visible = false;
+                //}
+            }
+            //Ventas
+            else if (this.Session["IDProcedimiento"].ToString() == "5")
+            {
+                try
+                {
+                    TextAlerta.Text += "Ejecuta ENTRADA_VENTAS";         
+                    DBHelper.MigraProcedureVentas("");
+                    TextAlerta.Text += Variables.mensajeserver;
+                    //DBHelper.ExecuteNonQueryProcedureVenta("");
+
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - MigraProcedureVenta--> " + ex.Message);
+                    TextAlerta.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+                try
+                {
+                    //consulta de ventas todos a 1
+                    TextAlerta.Text += "Ejecuta Procedimiento";
+                    DBHelper.ExeNonQueryProcMovVentas("");
+                    TextAlerta.Text += Variables.mensajeserver;
+                    //                 
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - ExeNonQueryProcMovVentas --> " + ex.Message);
+                    TextAlerta.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+
+
+                try
+                {
+                    TextAlerta.Text += "Ejecuta migra IMPVENTA a la 80";
+                    DBHelper.MigraProcedureVenta("");
+                    TextAlerta.Text += Variables.mensajeserver;
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - MigraProcedureVenta --> " + ex.Message);
+                    TextAlertaErr.Text += Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+                try
+                {
+                    TextAlerta.Text += "Ejecuta migra IMPVENTADEP a la 80";
+                    DBHelper.MigraProcedureVentaDEP("");
+                    TextAlerta.Text += Variables.mensajeserver;
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - MigraProcedureVentaDEP --> " + ex.Message);
+                    TextAlertaErr.Text += Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+
+                
+
+                //alerta.Visible = true;
+                //TextAlerta.Text += "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
+                ////TextAlertaErr.Text += "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
+                //Variables.mensajeserver = "";
+                ////Buscar error
+                //alerta.Visible = true;
+                ////BtnLanzaPro.Visible = false;
+                ////}
+            }
+            //Frigo
+            else if (this.Session["IDProcedimiento"].ToString() == "6")
+            {
+                try
+                {
+                    DBHelper.ExecuteNonQueryProcedureFrigo("");
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - ExecuteNonQueryProcedureFrigo --> " + ex.Message);
+                    TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+
+                try
+                {
+                    DBHelper.MigraProcedureFrigo("");
+                }
+                catch (Exception ex)
+                {
+                    alertaErr.Visible = true;
+                    string a = Main.Ficherotraza("BtEnviaFinalizados_Click - MigraProcedureFrigo --> " + ex.Message);
+                    TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+                    Variables.mensajeserver = "";
+                    return;
+                }
+                alerta.Visible = true;
+                TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
+                Variables.mensajeserver = "";
+                //BtnLanzaPro.Visible = false;
+                //}
+            }
+
+
+
+
+
+
+            else
+            {
+                alerta.Visible = true;
+                TextAlerta.Text += "No se contempla el envio de esta información a GoldenSoft. Deberá implementarla previamente en la tabla FORMULARIOS.";
+                Variables.mensajeserver = "";
+                return;
+            }
+
+
+            if (TxtID.Text == "")
+            { }
+            else
+            {
+                btnGenerate_Click(sender, e);
+                if (DrPrinters.SelectedItem.Value == "4")
+                {
+                    btnGeneraTodoPerf_Click(sender, e);
+                }
+                else
+                {
+                    btnGenerateTodo_Click(sender, e);
+                }
+                //btnGenerateTodo_Click(sender, e);
+            }
+
+            Carga_Lotes(this.Session["IDSecuencia"].ToString());
+            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+
+            alerta.Visible = true;
+            TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text + Environment.NewLine; // + TextAlerta.Text;
+        }
+
+        //protected void BtnLanzaPro_Click(object sender, EventArgs e)
+        //{
+        //    //Prueba Gold
+        //    // Carga_Lotes2("1");
+        //    Variables.mensajeserver = "";
+
+        //    if (this.Session["IDSecuencia"].ToString() == "1" || this.Session["IDSecuencia"].ToString() == "2" ||
+        //        this.Session["IDSecuencia"].ToString() == "4" || this.Session["IDSecuencia"].ToString() == "5")
+        //    {             
+        //        try
+        //        {
+        //            //Lanza procedimiento con ESTADOS a 1
+        //            DBHelper.ExecuteNonQueryProcedure("");
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            alertaErr.Visible = true;
+        //            TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+        //            Variables.mensajeserver = "";
+        //            return;
+        //        }
+
+        //        try
+        //        {
+        //            DBHelper.MigraProcedure("");
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            alertaErr.Visible = true;
+        //            TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+        //            Variables.mensajeserver = "";
+        //            return;
+        //        }
+
+        //        //if (Variables.mensajeserver != "")
+        //        //{
+        //        //    alertaErr.Visible = true;
+        //        //    TextAlertaErr.Text = Variables.mensajeserver;
+        //        //    Variables.mensajeserver = "";
+        //        //}
+        //        //else
+        //        //{
+        //        alerta.Visible = true;
+        //        TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
+        //        Variables.mensajeserver = "";
+        //        BtnLanzaPro.Visible = false;
+        //        //}
+        //    }
+        //    else if(this.Session["IDSecuencia"].ToString() == "3" || this.Session["IDSecuencia"].ToString() == "6")
+        //    {
+
+        //        try
+        //        {
+        //            DBHelper.ExecuteNonQueryProcedurePinch("");
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            alertaErr.Visible = true;
+        //            TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+        //            Variables.mensajeserver = "";
+        //            return;
+        //        }
+
+        //        //if (Variables.mensajeserver != "")
+        //        //{
+        //        //    alertaErr.Visible = true;
+        //        //    TextAlertaErr.Text = Variables.mensajeserver;
+        //        //    Variables.mensajeserver = "";
+        //        //    return;
+        //        //}
+
+        //        try
+        //        {
+        //            DBHelper.MigraProcedurePinchAlb("");
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            alertaErr.Visible = true;
+        //            TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
+        //            Variables.mensajeserver = "";
+        //            return;
+        //        }
+
+        //        //if (Variables.mensajeserver != "")
+        //        //{
+        //        //    alertaErr.Visible = true;
+        //        //    TextAlertaErr.Text = Variables.mensajeserver;
+        //        //    Variables.mensajeserver = "";
+        //        //}
+        //        //else
+        //        //{
+        //        btnGenerate_Click(sender, e);
+        //        btnGenerateTodo_Click(sender, e);
+
+
+        //        alerta.Visible = true;
+        //        TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
+        //        Variables.mensajeserver = "";
+        //        BtnLanzaPro.Visible = false;
+        //        //
+        //    }
+        //    else
+        //    {
+        //        alerta.Visible = true;
+        //        TextAlerta.Text = "No se contempla el envio de esta información a GoldenSoft. Deberá implementarla previamente en la tabla SECUENCIAS.";
+        //        Variables.mensajeserver = "";
+        //    }
+
+
+        //}       
+        protected void DrScaneados_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+            txtQRCodebis.Visible = false;
+            txtQRCode.Visible = true;
+            //BtnLanzaPro.Visible = false;
+
+            string SQL = "SELECT * FROM ZBANDEJAS  ";
+            DataTable dbP = Main.BuscaLote(SQL).Tables[0];
+
+            this.Session["IDLista"] = "Escaneados";
+
+            //string SQL = "SELECT * FROM ZLOTESCREADOS WHERE ZID = '" + DrScaneados.SelectedItem.Value + "' ";
+            SQL = "SELECT * FROM ZENTRADA WHERE LOTE = '" + DrScaneados.SelectedItem.Text + "' ";
+            DataTable dbA = Main.BuscaLote(SQL).Tables[0];
+            if (dbA.Rows.Count == 0)
+            {
+                SQL = "SELECT * FROM ZLOTESCREADOS WHERE ZID = '" + DrScaneados.SelectedItem.Value + "' ";
+                dbA = Main.BuscaLote(SQL).Tables[0];
+
+                foreach (DataRow filas in dbA.Rows)
+                {                 
+                    txtQRCode.Text = filas["ZLOTE"].ToString();
+                    TxtID.Text = filas["ZID"].ToString();
+
+                    if (filas["ZFECHA"].ToString() != "")
+                    {
+                        TxtFecha.Text = filas["ZFECHA"].ToString().Substring(0, 10);
+                    }
+                    else
+                    {
+                        TxtFecha.Text = filas["ZFECHA"].ToString();
+                    }
+
+                    TxtVariedad.Text = "";
+                    TxtCajas.Text = "";
+                    TxtPlantas.Text = "";
+                    LbIDLote.Text = filas["ZID"].ToString();
+
+                    if (DrPrinters.SelectedItem.Value == "6")
+                    {
+                        LbCodeQRPalteAlv.Text = filas["ZID"].ToString();
+                        LbTipoPlantaP.Text = "";
+                        LbVariedadP.Text = "";
+                        LbVariedadS.Text = "";
+                        lbUnidadesP.Text = "";
+                        lbNumPlantasP.Text = "";
+                    }
+                    else
+                    {
+                        
+                        LbCampoS.Text = "";
+                        //LbCampoSQR.Text = "";
+                        LbFechaS.Text = "";
+                        //LbFechaSQR.Text = "";
+                        LbVariedadS.Text = "";
+                        //LbVariedadSQR.Text = "";
+                        LbCajasS.Text = "";
+                        //LbCajasSQR.Text = "";
+                        LbPlantasS.Text = "";
+                        //LbPlantasSQR.Text = "";
+                        Lbcompleto.Text = "";
+                        LbPlantaS.Text = "";
+                        //LbPlantaSQR.Text = "";
+                    }
+
+                    TxtEstado.Text = "";
+                    TxtDispositivo.Text = "";
+                    TxtLoteDestino.Text = "";
+
+                    TxtForm.Text = "";
+                    TxtManojos.Text = "";
+                    TxtDesde.Text = "";
+                    TxtHasta.Text = "";
+                    TxtETDesde.Text = "";
+                    TxtETHasta.Text = "";
+                    TxtTuneles.Text = "";
+                    TxtPasillos.Text = "";
+                    TxtObservaciones.Text = "";
+                    TxtOK.Text = "";
+                    H1Normal.Visible = false;
+                    H1Seleccion.Visible = false;
+                    H1Red.Visible = true;
+                    H1Green.Visible = false;
+                    DrPrinters_Click();
+
+                    btnGenerate_Click(sender, e);
+                    alerta.Visible = false;
+                    alertaErr.Visible = false;
+                    btnPrint2.Visible = false;
+                    //BTerminado.Visible = false;
+                    //btProcesa.Visible = false;
+                    //btPorcesa.Visible = false;
+                    alertaLog.Visible = false;
+
+                    Btfin.Visible = false;
+                    BTerminado.Visible = false;
+
+                    if (DrPrinters.SelectedItem.Value == "1")
+                    {
+                        btnPrintA3.Visible = true;
+                    }
+                    else
+                    {
+                        btnPrintB3.Visible = true;
+                    }
+                    
+                    //HLoteProceso.InnerText = "Código QR YA ASIGNADO, PENDIENTE PROCESAR";
+                    //HLoteProceso.Attributes.Add("style", "color: red; font-weight:bold;");
+
+                    //Btfin.Visible = false;
+                    //BTerminado.Visible = false;
+                    break;
+                }
+            }
+            else
+            {
+                foreach (DataRow filas in dbA.Rows)
+                {
+                    //this.Session["IDSecuencia"] = filas["ID"].ToString();
+                    LbIDLote.Text = filas["ID"].ToString();
+                    txtQRCode.Text = filas["LOTE"].ToString();
+                    TxtCampo.Text = filas["TIPO_PLANTA"].ToString();
+
+                    if (filas["FECHA"].ToString() != "")
+                    {
+                        TxtFecha.Text = filas["FECHA"].ToString().Substring(0, 10);
+                    }
+                    else
+                    {
+                        TxtFecha.Text = filas["FECHA"].ToString();
+                    }
+
+                    TxtVariedad.Text = filas["VARIEDAD"].ToString();
+                    TxtCajas.Text = filas["UNIDADES"].ToString();
+                    TxtEstado.Text = filas["ESTADO"].ToString();
+                    TxtDispositivo.Text = filas["DeviceName"].ToString();
+                    TxtLoteDestino.Text = filas["LOTEDESTINO"].ToString();
+
+                    if (TxtCajas.Text == "CAJAS")
+                    {
+                        //LbnumeroPlantas.Text = "Número de Cajas:";
+                        LbCajasS.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //filas["UNIDADES"].ToString();
+                        //LbCajasSQR.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //filas["UNIDADES"].ToString();
+                        LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                        //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+
+                    }
+                    if (TxtCajas.Text == "PLANTAS")
+                    {
+                        //LbnumeroPlantas.Text = "Número de Plantas:";
+                        LbCajasS.Text = "Unidades: " + filas["UNIDADES"].ToString();
+                        //LbCajasSQR.Text = "Unidades: " + filas["UNIDADES"].ToString();
+                        LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                        //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                    }
+
+                    try
+                    {
+                        foreach (DataRow fila2 in dbP.Rows)
+                        {
+                            if (fila2["ZTIPO_PLANTA"].ToString() == filas["TIPO_PLANTA"].ToString() && fila2["ZTIPO_FORMATO"].ToString() == filas["UNIDADES"].ToString())
+                            {
+                                if (filas["UNIDADES"].ToString() == "PLANTAS")
+                                {
+                                    LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                                    //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                                    break;
+                                }
+                                else if (filas["UNIDADES"].ToString() == "CAJAS")
+                                {
+                                    if (filas["MANOJOS"].ToString() == "0" || filas["MANOJOS"].ToString() == "" || filas["MANOJOS"].ToString() == null)
+                                    {
+                                        LbPlantasS.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+                                        //LbPlantasSQR.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+                                    }
+                                    else
+                                    {
+                                        foreach (DataRow fila3 in dbP.Rows)
+                                        {
+                                            if (fila3["ZTIPO_PLANTA"].ToString() == filas["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
+                                            {
+                                                int NN = Convert.ToInt32(filas["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
+                                                LbPlantasS.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+                                                //LbPlantasSQR.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Lberror.Text = ex.Message;
+                    }
+
+                    TxtPlantas.Text = filas["NUM_UNIDADES"].ToString();
+                    LbCampoS.Text = "CAMPO O SECTOR: " + filas["DESDE"].ToString();
+                    //LbCampoSQR.Text = "CAMPO O SECTOR: " + filas["DESDE"].ToString();
+                    LbPlantaS.Text = "TIPO PLANTAS: " + filas["TIPO_PLANTA"].ToString();
+                    //LbPlantaSQR.Text = "TIPO PLANTAS: " + filas["TIPO_PLANTA"].ToString();
+
+                    if(filas["FECHA"].ToString() != "")
+                    {
+                        LbFechaS.Text = "FECHA CORTE: " + filas["FECHA"].ToString().Substring(0,10);
+                    }
+                    else
+                    {
+                        LbFechaS.Text = "FECHA CORTE: ";
+                    }
+                    
+                    //LbFechaSQR.Text = "FECHA CORTE: " + filas["FECHA"].ToString();
+                    LbVariedadS.Text = "VARIEDAD: " + filas["VARIEDAD"].ToString();
+                    //LbVariedadSQR.Text = "VARIEDAD: " + filas["VARIEDAD"].ToString();
+                    //LbCajasS.Text = "Nº CAJAS: " + filas["UNIDADES"].ToString();
+                    //LbPlantasS.Text = "Nº PLANTAS: " + filas["NUM_UNIDADES"].ToString();
+                    Lbcompleto.Text = "QR COMPLETO";
+
+                    TxtID.Text = filas["ID"].ToString();
+                    TxtForm.Text = filas["TIPO_FORM"].ToString();
+                    TxtManojos.Text = filas["MANOJOS"].ToString();
+                    TxtDesde.Text = filas["DESDE"].ToString();
+                    TxtHasta.Text = filas["HASTA"].ToString();
+                    TxtETDesde.Text = filas["ETDESDE"].ToString();
+                    TxtETHasta.Text = filas["ETHASTA"].ToString();
+                    TxtTuneles.Text = filas["TUNELES"].ToString();
+                    TxtPasillos.Text = filas["PASILLOS"].ToString();
+                    TxtObservaciones.Text = filas["OBSERVACIONES"].ToString();
+                    TxtOK.Text = filas["OK"].ToString();
+
+                    ////if (TxtID.Enabled == true)
+                    ////{
+                         //Oculta_Datos(1);
+                    ////}
+                    ////else
+                    ////{
+                    ////    Oculta_Datos(0);
+                    ////}
+
+                    H1Normal.Visible = false;
+                    H1Seleccion.Visible = false;
+                    H1Red.Visible = true;
+                    if (DrPrinters.SelectedItem.Value == "1")
+                    {
+                        btnPrintA3.Visible = true;
+                    }
+                    else
+                    {
+                        btnPrintB3.Visible = true;
+                    }
+                    H1Green.Visible = false;
+                    btnPrint2.Visible = false;
+
+                    //HLoteProceso.InnerText = "Código QR YA ASIGNADO, PENDIENTE PROCESAR";
+                    //HLoteProceso.Attributes.Add("style", "color: red; font-weight:bold;");
+
+                    alerta.Visible = false;
+                    alertaErr.Visible = false;
+                    alertaLog.Visible = false;
+
+                    btnGenerate_Click(sender, e);
+                    if (DrPrinters.SelectedItem.Value == "4")
+                    {
+                        btnGeneraTodoPerf_Click(sender, e);
+                    }
+                    else
+                    {
+                        btnGenerateTodo_Click(sender, e);
+                    }
+                    //btnGenerateTodo_Click(sender, e);
+                   
+                    //btProcesa.Visible = false;
+                    //btPorcesa.Visible = false;
+                    Btfin.Visible = false;
+                    BTerminado.Visible = false;
+                    string Miro = filas["ESTADO"].ToString();
+                    if (filas["ESTADO"].ToString() == "" || filas["ESTADO"].ToString() == "0")
+                    {
+                        BTerminado.Visible = true;
+                    }
+                    else if (filas["ESTADO"].ToString() == "1")
+                    {
+                        Btfin.Visible = true;
+                    }
+
+                    //SQL = "DELETE FROM ZLOTESCREADOS WHERE ZLOTE = '" + txtQRCode.Text + "'";
+                    SQL = "UPDATE ZLOTESCREADOS SET ZESTADO = -1 WHERE ZLOTE = '" + txtQRCode.Text + "'";
+                    DBHelper.ExecuteNonQuery(SQL);
+                    Carga_Lotes(this.Session["IDSecuencia"].ToString());
+                    Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+
+                    break;
+                }
+            }           
+        }
+
+        protected void DrLotes_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            alerta.Visible = false;
+            alertaErr.Visible = false;
+            alertaLog.Visible = false;
+            txtQRCodebis.Visible = false;
+            txtQRCode.Visible = true;
+            BTerminado.Visible = false;
+            Btfin.Visible = false;
+            //BtnLanzaPro.Visible = false;
+            BtEnviaFinalizados.Enabled = false;
+            string AA = "";
+            string CC = "";
+            string BB = "";
+            string DD = "";
+            string EE = "";
+            string FF = "";
+
+
+            BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
+
+            string SQL = "SELECT * FROM ZBANDEJAS  ";
+            DataTable dbP = Main.BuscaLote(SQL).Tables[0];
+
+            this.Session["IDLista"] = "Lotes";
+
+            SQL = "SELECT * FROM ZENTRADA  WHERE ID = '" + DrLotes.SelectedItem.Value + "' ";
+            DataTable dbA = Main.BuscaLote(SQL).Tables[0];
+            foreach (DataRow filas in dbA.Rows)
+            {
+                LbIDLote.Text = filas["ID"].ToString();
+                if (filas["ESTADO"].ToString().ToString() == "1" )
+                {
+                    if (DrVariedad.SelectedItem.Value == "5")
+                    {
+                        BtEnviaFinalizados.Enabled = false;
+                    }
+                    else
+                    {
+                        BtEnviaFinalizados.Enabled = true;
+                    }
+                    //BtEnviaFinalizados.Enabled = true;
+                    BtFinalizalote.Attributes["class"] = "btn btn-info  btn-block";
+                }
+
+                txtQRCode.Text = filas["LOTE"].ToString();
+                TxtCampo.Text = filas["TIPO_PLANTA"].ToString();
+               
+                if (filas["FECHA"].ToString() != "")
+                {
+                    TxtFecha.Text = filas["FECHA"].ToString().Substring(0, 10);
+                }
+                else
+                {
+                    TxtFecha.Text = filas["FECHA"].ToString();
+                }
+
+                TxtVariedad.Text = filas["VARIEDAD"].ToString();
+                TxtCajas.Text = filas["UNIDADES"].ToString();
+                TxtEstado.Text = filas["ESTADO"].ToString();
+                TxtDispositivo.Text = filas["DeviceName"].ToString();
+                TxtLoteDestino.Text = filas["LOTEDESTINO"].ToString();
+
+                if (DrPrinters.SelectedItem.Value == "6")
+                {                      
+                    LbCodeQRPalteAlv.Text = filas["LOTE"].ToString();
+                    LbTipoPlantaP.Text = "";
+                    LbVariedadP.Text = "";
+                    lbUnidadesP.Text = "";
+                    lbNumPlantasP.Text = "";
+
+                    if (TxtCajas.Text == "CAJAS")
+                    {
+                        lbUnidadesP.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //+ filas["UNIDADES"].ToString();
+                        lbNumPlantasP.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+
+                    }
+                    if (TxtCajas.Text == "PLANTAS")
+                    {
+                        lbUnidadesP.Text = "Unidades: " + filas["UNIDADES"].ToString();
+                        lbNumPlantasP.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                    }
+                    if (TxtCajas.Text == "BANDEJAS")
+                    {
+                        lbUnidadesP.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //+ filas["UNIDADES"].ToString(); filas["UNIDADES"].ToString();
+                        lbNumPlantasP.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                    }
+
+                    TxtPlantas.Text = filas["NUM_UNIDADES"].ToString();
+
+                    //LbTipoPlantaP.Text = "Tipo Planta: BANDEJAS " + filas["TIPO_PLANTA"].ToString();
+
+                    Object Con = DBHelper.ExecuteScalarSQL("SELECT TOP 1 (ZDESCRIPTIPO) FROM  ZTIPOPLANTADESCRIP  WHERE ZTIPO_PLANTA = '" + filas["TIPO_PLANTA"].ToString() + "'", null);
+
+                    if (Con is null)
+                    {
+                        LbTipoPlantaP.Text = "Tipo Planta: " + filas["TIPO_PLANTA"].ToString();
+                    }
+                    else
+                    {
+                        LbTipoPlantaP.Text = "Tipo Planta: " + Con;
+                    }
+
+                    //LbTipoPlantaP.Text = "Tipo Planta: " + filas["TIPO_PLANTA"].ToString()
+
+
+                    //LbTipoPlantaP.Text = "Tipo Planta: " + filas["UNIDADES"].ToString() + " " + filas["TIPO_PLANTA"].ToString(); // "Tipo Planta: BANDEJAS " + filas["TIPO_PLANTA"].ToString();
+
+                    string N = "";
+                    Con = DBHelper.ExecuteScalarSQL("SELECT TOP 1 (ZDESCRIPCION) FROM  ZEMPRESAVARIEDAD  WHERE ZVARIEDAD ='" + filas["VARIEDAD"].ToString() + "'", null);
+
+                    if (Con is null)
+                    {
+                        LbVariedadP.Text = "Variedad: " + filas["VARIEDAD"].ToString();
+                    }
+                    else
+                    {
+                        LbVariedadP.Text = "Variedad: " + Con;
+                    }
+
+                    N = "";
+                    Con = DBHelper.ExecuteScalarSQL("SELECT TOP 1 (ZEMPRESA) FROM  ZEMPRESAVARIEDAD  WHERE ZVARIEDAD ='" + filas["VARIEDAD"].ToString() + "'", null);
+
+                    if (Con is null)
+                    {
+                        //VIVA: Viveros Valsaín, SLU
+                        //VRE: Viveros Río Eresma, SLU
+                        LbCodePaletAlv.Text = "";
+                    }
+                    else
+                    {
+                        if (Con.ToString().Contains("VIVA"))
+                        {
+
+                            LbCodePaletAlv.Text = "Viveros Valsaín, SLU";
+                        }
+                        else
+                        {
+                            LbCodePaletAlv.Text = "Viveros Río Eresma, SLU";
+                        }
+                    }
+
+                    Lbcompleto.Text = "QR COMPLETO";
+                }
+                else
+                {
+                    LbIDLote.Text = filas["ID"].ToString();
+
+                    if (TxtCajas.Text == "CAJAS")
+                    {
+                        // LbnumeroPlantas.Text = "Número de Cajas:";
+                        LbCajasS.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //+ filas["UNIDADES"].ToString();
+                        //LbCajasSQR.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //+ filas["UNIDADES"].ToString();
+                        LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                        //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+
+                    }
+                    if (TxtCajas.Text == "PLANTAS")
+                    {
+                        //LbnumeroPlantas.Text = "Número de Plantas:";
+                        LbCajasS.Text = "Unidades: " + filas["UNIDADES"].ToString();
+                        //LbCajasSQR.Text = "Unidades: " + filas["UNIDADES"].ToString();
+                        LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                        //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                    }
+                    if (TxtCajas.Text == "BANDEJAS")
+                    {
+                        //LbnumeroPlantas.Text = "Número de Plantas:";
+                        LbCajasS.Text = "Unidades: " + filas["UNIDADES"].ToString();
+                        //LbCajasSQR.Text = "Unidades: " + filas["UNIDADES"].ToString();
+                        LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                        //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                    }
+
+                    TxtPlantas.Text = filas["NUM_UNIDADES"].ToString();
+                    LbCampoS.Text = "CAMPO O SECTOR: " + filas["DESDE"].ToString();
+                    //LbCampoSQR.Text = "CAMPO O SECTOR: " + filas["DESDE"].ToString();
+                    LbPlantaS.Text = "TIPO PLANTAS: " + filas["TIPO_PLANTA"].ToString();
+                    //LbPlantaSQR.Text = "TIPO PLANTAS: " + filas["TIPO_PLANTA"].ToString();
+
+                    if (filas["FECHA"].ToString() != "")
+                    {
+                        LbFechaS.Text = "FECHA CORTE: " + filas["FECHA"].ToString().Substring(0, 10);
+                    }
+                    else
+                    {
+                        LbFechaS.Text = "FECHA CORTE: ";
+                    }
+
+                    //LbFechaSQR.Text = "FECHA CORTE: " + filas["FECHA"].ToString();
+                    LbVariedadS.Text = "VARIEDAD: " + filas["VARIEDAD"].ToString();
+                    //LbVariedadSQR.Text = "VARIEDAD: " + filas["VARIEDAD"].ToString();
+                    //LbCajasS.Text = "Nº CAJAS: " + filas["UNIDADES"].ToString();
+                    //LbPlantasS.Text = "Nº PLANTAS: " + filas["NUM_UNIDADES"].ToString();
+                    Lbcompleto.Text = "QR COMPLETO";
+                }
+
+
+                try
+                {
+                    foreach (DataRow fila2 in dbP.Rows)
+                    {
+                        AA = fila2["ZTIPO_PLANTA"].ToString();
+                        CC = fila2["ZTIPO_FORMATO"].ToString();
+                        //string JJ = filas["UNIDADES"].ToString();
+                        //string FF = fila2["ZNUMERO_PLANTAS"].ToString();
+
+                        //if (DrPrinters.SelectedItem.Value == "6")
+                        //{
+                        //    BB = "P-ALV-" + filas["TIPO_PLANTA"].ToString();
+                        //}
+                        //else
+                        //{
+                            BB = filas["TIPO_PLANTA"].ToString();
+                        //}
+
+                        //BB = filas["TIPO_PLANTA"].ToString();//Tips produccion (P-TIPS)
+                        DD = filas["UNIDADES"].ToString();//CAJAS
+                        //string EE = filas["NUM_UNIDADES"].ToString();//40
+                        //string GG = filas["MANOJOS"].ToString();//3
+
+                        if (fila2["ZTIPO_PLANTA"].ToString() == BB && fila2["ZTIPO_FORMATO"].ToString() == filas["UNIDADES"].ToString())
+                        {
+                            if (filas["UNIDADES"].ToString() == "PLANTAS")
+                            {
+                                if (DrPrinters.SelectedItem.Value == "6")
+                                {
+                                    lbNumPlantasP.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                                    //value = 1234567890.123456;
+                                    Double Value = Convert.ToDouble(filas["NUM_UNIDADES"].ToString());
+                                    lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
+                                    // Displays 1,234,567,890.1
+                                }
+                                else
+                                {
+                                    LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
+                                }
+                                break;
+                            }
+                            else if (filas["UNIDADES"].ToString() == "CAJAS")
+                            {
+                                if (filas["MANOJOS"].ToString() == "0" || filas["MANOJOS"].ToString() == "" || filas["MANOJOS"].ToString() == null)
+                                {
+                                    if (DrPrinters.SelectedItem.Value == "6")
+                                    {
+                                        string Cuantos = (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+                                        lbNumPlantasP.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+                                        Double Value = Convert.ToDouble(Cuantos);
+                                        lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
+                                    }
+                                    else
+                                    {
+                                        LbPlantasS.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+                                    }
+                                    
+                                    //LbPlantasSQR.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+                                }
+                                else
+                                {
+                                    foreach (DataRow fila3 in dbP.Rows)
+                                    {
+                                        if (fila3["ZTIPO_PLANTA"].ToString() == filas["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
+                                        {
+                                            int NN = Convert.ToInt32(filas["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
+
+                                            if (DrPrinters.SelectedItem.Value == "6")
+                                            {
+                                                string Cuantos = ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+                                                lbNumPlantasP.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+                                                Double Value = Convert.ToDouble(Cuantos);
+                                                lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
+                                            }
+                                            else
+                                            {
+                                                LbPlantasS.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+                                            }                                  
+                                            //LbPlantasSQR.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+                                            break;
+                                        }
+                                    }
+                                }
+                                break;
+                            }
+                            else if (filas["UNIDADES"].ToString() == "BANDEJAS")
+                            {
+                                if (filas["MANOJOS"].ToString() == "0" || filas["MANOJOS"].ToString() == "" || filas["MANOJOS"].ToString() == null)
+                                {
+                                    if (DrPrinters.SelectedItem.Value == "6")
+                                    {
+                                        string Cuantos = (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+                                        lbNumPlantasP.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+                                        Double Value = Convert.ToDouble(Cuantos);
+                                        lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",",".");
+                                    }
+                                    else
+                                    {
+                                        LbPlantasS.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+                                    }                                   
+                                    //LbPlantasSQR.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
+                                }
+                                else
+                                {
+                                    foreach (DataRow fila3 in dbP.Rows)
+                                    {
+                                        if (fila3["ZTIPO_PLANTA"].ToString() == filas["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
+                                        {
+                                            int NN = Convert.ToInt32(filas["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
+
+                                            if (DrPrinters.SelectedItem.Value == "6")
+                                            {
+                                                string Cuantos = ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+                                                lbNumPlantasP.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+                                                Double Value = Convert.ToDouble(Cuantos);
+                                                lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
+                                            }
+                                            else
+                                            {
+                                                LbPlantasS.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+                                            }                                  
+                                            //LbPlantasSQR.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
+                                            break;
+                                        }
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Lberror.Text = ex.Message;
+                }
+
+                TxtID.Text = filas["ID"].ToString();
+                TxtForm.Text = filas["TIPO_FORM"].ToString();
+                TxtManojos.Text = filas["MANOJOS"].ToString();
+                TxtDesde.Text = filas["DESDE"].ToString();
+                TxtHasta.Text = filas["HASTA"].ToString();
+                TxtETDesde.Text = filas["ETDESDE"].ToString();
+                TxtETHasta.Text = filas["ETHASTA"].ToString();
+                TxtTuneles.Text = filas["TUNELES"].ToString();
+                TxtPasillos.Text = filas["PASILLOS"].ToString();
+                TxtObservaciones.Text = filas["OBSERVACIONES"].ToString();
+                TxtOK.Text = filas["OK"].ToString();
+
+                ////if(TxtID.Enabled == true)
+                ////{
+                //    Oculta_Datos(1);
+                ////}
+                ////else
+                ////{
+                ////    Oculta_Datos(0);
+                ////}
+                alerta.Visible = false;
+                alertaErr.Visible = false;
+                alertaLog.Visible = false;
+                int Runidades = 0;
+
+
+                if (DrVariedad.SelectedItem.Value == "7")
+                {
+                    SQL = "SELECT A.* ";
+                    SQL += " FROM ZENTRADA A, ZFORMULARIOS B ";
+                    SQL += " WHERE A.TIPO_FORM = B.ZTITULO ";
+                    SQL += " AND B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
+                    SQL += " AND A.LOTE = '" + filas["LOTE"].ToString() + "'";
+
+                    DataTable dbF = Main.BuscaLote(SQL).Tables[0];
+
+                    if (dbF.Rows.Count > 1)
+                    {
+                        int Totales = 0;
+
+                        foreach (DataRow filaCount in dbF.Rows)
+                        {
+                            try
+                            {
+                                foreach (DataRow fila2 in dbP.Rows)
+                                {
+                                    string XX = fila2["ZTIPO_FORMATO"].ToString();
+                                    AA = fila2["ZTIPO_PLANTA"].ToString();                                   
+                                    //BB = "P-ALV-" + filaCount["TIPO_PLANTA"].ToString();//Tips produccion (P-TIPS)
+                                    BB =  filaCount["TIPO_PLANTA"].ToString();//Tips produccion (P-TIPS)
+                                    DD = filaCount["UNIDADES"].ToString();//CAJAS
+                                    EE = filaCount["NUM_UNIDADES"].ToString();//CAJAS
+                                    FF = fila2["ZNUMERO_PLANTAS"].ToString();//CAJAS
+
+                                    if (fila2["ZTIPO_PLANTA"].ToString().Contains(BB) && fila2["ZTIPO_FORMATO"].ToString() == filaCount["UNIDADES"].ToString())
+                                    {
+                                        CC = fila2["ZTIPO_FORMATO"].ToString();
+                                        if (filaCount["UNIDADES"].ToString() == "PLANTAS")
+                                        {
+                                            Totales += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
+                                            Runidades += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
+                                        }
+                                        else if (filaCount["UNIDADES"].ToString() == "CAJAS")
+                                        {
+                                            if (filaCount["MANOJOS"].ToString() == "0" || filaCount["MANOJOS"].ToString() == "" || filaCount["MANOJOS"].ToString() == null)
+                                            {
+                                                Totales += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString());
+                                                Runidades += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
+                                            }
+                                            else
+                                            {
+                                                foreach (DataRow fila3 in dbP.Rows)
+                                                {
+                                                    if (fila3["ZTIPO_PLANTA"].ToString() == filaCount["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
+                                                    {
+                                                        int NN = Convert.ToInt32(filaCount["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
+                                                        Totales += (Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString()) + NN);
+                                                        Runidades += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
+                                                        //Runidades += (Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString()) + NN);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else if (filaCount["UNIDADES"].ToString() == "BANDEJAS")
+                                        {
+                                            if (filaCount["MANOJOS"].ToString() == "0" || filaCount["MANOJOS"].ToString() == "" || filaCount["MANOJOS"].ToString() == null)
+                                            {
+                                                Totales +=  (Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString()));
+                                                Runidades += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
+                                            }
+                                            else
+                                            {
+                                                foreach (DataRow fila3 in dbP.Rows)
+                                                {
+                                                    if (fila3["ZTIPO_PLANTA"].ToString() == filaCount["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
+                                                    {
+                                                        int NN = Convert.ToInt32(filaCount["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
+                                                        Totales += ((Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN);
+                                                        Runidades += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+
+                                Double Value = Convert.ToDouble(Totales);
+                                if (DrPrinters.SelectedItem.Value == "6")
+                                {                                    
+                                    lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
+                                    lbUnidadesP.Text = "Unidades: " + CC + " " + Runidades.ToString();
+                                }
+                                else
+                                {
+                                    LbPlantasS.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
+                                }                                                                    
+                            }
+                            catch (Exception ex)
+                            {
+                                Lberror.Text = ex.Message;
+                            }
+                        }
+                    }
+                }
+                
+                btnGenerate_Click(sender, e);
+                if (DrPrinters.SelectedItem.Value == "4")
+                {
+                    btnGeneraTodoPerf_Click(sender, e);
+                }
+                else
+                {
+                    btnGenerateTodo_Click(sender, e);
+                }
+                //btnGenerateTodo_Click(sender, e);
+                //btnPrint2.Visible = true;
+                //btProcesa.Visible = false;
+                //btPorcesa.Visible = false;
+                BtFinalizalote.Enabled = false;
+                //BtFinalizaTodos.Enabled = true;
+                BtEnviaFinalizados.Enabled = false;
+
+                Btfin.Visible = false;
+                BTerminado.Visible = false;
+                string Miro = filas["ESTADO"].ToString();
+                if (filas["ESTADO"].ToString() == "" || filas["ESTADO"].ToString() == "0")
+                {
+                    //BTerminado.Visible = true;
+                    BtFinalizalote.Text = "Finalizar este Lote";
+                    BtFinalizalote.Attributes["class"] = "btn btn-success  btn-block";
+                    BtFinalizalote.Enabled = true;
+                    BtEnviaFinalizados.Enabled = false;
+                    //BtFinalizaTodos.Enabled = true;
+                }
+                else if (filas["ESTADO"].ToString() == "1")
+                {
+                    //Btfin.Visible = true;
+                    BtFinalizalote.Text = "Lote Finalizado";
+                    BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
+                    BtFinalizalote.Enabled = false;
+                    if (DrVariedad.SelectedItem.Value == "5")
+                    {
+                        BtEnviaFinalizados.Enabled = false;
+                    }
+                    else
+                    {
+                        BtEnviaFinalizados.Enabled = true;
+                    }
+                    //BtEnviaFinalizados.Enabled = true;
+                    //BtFinalizaTodos.Enabled = true;
+                }
+                SQL = "UPDATE ZLOTESCREADOS SET ZESTADO = -1 WHERE ZLOTE = '" + txtQRCode.Text + "'";
+                DBHelper.ExecuteNonQuery(SQL);
+                //Carga_Lotes(this.Session["IDSecuencia"].ToString());
+                Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+
+                break;
+            }
+            //cambia el color del lote
+            Actualiza_Lote();
+            //this.SetDropDownListItemColor(dbA);
+        }
+
+        
+        protected void btPrinter_Click(object sender, EventArgs e)
+        {
+            dvDrlist.Visible = true;
+            dvPrinters.Visible = false;
+             if(DrLotes.SelectedItem.Value != "" || DrScaneados.SelectedItem.Value != "")
+            {
+                btnGenerate_Click(sender, e);
+                if (DrPrinters.SelectedItem.Value == "4")
+                {
+                    btnGeneraTodoPerf_Click(sender, e);
+                }
+                else
+                {
+                    btnGenerateTodo_Click(sender, e);
+                }
+                //btnGenerateTodo_Click(sender, e);
+            }
+            else
+            {
+                LimpiaCajas();
+                alertaErr.Visible = false;
+
+            }
+        }
+
+        protected void DrPrinters_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            string Miro = DrPrinters.SelectedItem.Value;
+            Printers(DrPrinters.SelectedItem.Value);
+            PlaceHolderFito.Controls.Clear();
+            //Carga Los listados de lotes
+            if (DrLotes.SelectedItem.Value != "" || DrScaneados.SelectedItem.Value != "")
+            {
+                if (pnlContentsFT.Visible == true)
+                {
+                    PlaceHolderFito.Controls.Add(new LiteralControl("<iframe src='/Templates/Factura.html'  style='height:100%; width:100%; border:0px;'></iframe>"));
+                }
+                else
+                {
+                    btnGenerate_Click(sender, e);
+                    if (DrPrinters.SelectedItem.Value == "4")
+                    {
+                        btnGeneraTodoPerf_Click(sender, e);
+                    }
+                    else
+                    {
+                        btnGenerateTodo_Click(sender, e);
+                    }
+                    //btnGenerateTodo_Click(sender, e);
+                }
+
+            }
+            else
+            {
+                LimpiaCajas();
+                alertaErr.Visible = false;
+            }
+
+            Actualiza_Lote();
+            DrPrinters_Click();
+        }
+
+        private void DrPrinters_Click()
+        {
+            btnPrintA1.Visible = false;
+            btnPrintB1.Visible = false;
+            btnPrintC1.Visible = false;
+            btnPrintD1.Visible = false;
+            btnPrintA2.Visible = false;
+            btnPrintB2.Visible = false;
+            btnPrintC2.Visible = false;
+            btnPrintD2.Visible = false;
+            btnPrintA3.Visible = false;
+            btnPrintB3.Visible = false;
+            btnPrintC3.Visible = false;
+            btnPrintD3.Visible = false;
+            btnPrintA4.Visible = false;
+            btnPrintB4.Visible = false;
+            btnPrintC4.Visible = false;
+            btnPrintD4.Visible = false;
+
+
+            if (H1Normal.Visible == true)
+            {
+                if (DrPrinters.SelectedItem.Value == "1")
+                {
+                    btnPrintA1.Visible = true;
+                    btnPrintB1.Visible = false;
+                    btnPrintC1.Visible = false;
+                    btnPrintD1.Visible = false;
+                }
+                else if (DrPrinters.SelectedItem.Value == "2")
+                {
+                    btnPrintB1.Visible = true;
+                    btnPrintA1.Visible = false;
+                    btnPrintC1.Visible = false;
+                    btnPrintD1.Visible = false;
+                }
+                else if (DrPrinters.SelectedItem.Value == "6")
+                {
+                    btnPrintD1.Visible = true;
+                    btnPrintB1.Visible = false;
+                    btnPrintA1.Visible = false;
+                    btnPrintC1.Visible = false;
+                }
+                else
+                {
+                    btnPrintB1.Visible = false;
+                    btnPrintA1.Visible = false;
+                    btnPrintC1.Visible = true;
+                    btnPrintD1.Visible = false;
+                }
+
+            }
+
+            if (H1Seleccion.Visible == true)
+            {
+                if (DrPrinters.SelectedItem.Value == "1")
+                {
+                    btnPrintA2.Visible = true;
+                    btnPrintB2.Visible = false;
+                    btnPrintC2.Visible = false;
+                    btnPrintD2.Visible = false;
+                }
+                else if (DrPrinters.SelectedItem.Value == "2")
+                {
+                    btnPrintB2.Visible = true;
+                    btnPrintA2.Visible = false;
+                    btnPrintC2.Visible = false;
+                    btnPrintD2.Visible = false;
+                }
+                else if (DrPrinters.SelectedItem.Value == "6")
+                {
+                    btnPrintB2.Visible = false;
+                    btnPrintA2.Visible = false;
+                    btnPrintC2.Visible = false;
+                    btnPrintD2.Visible = true;
+                }
+                else
+                {
+                    btnPrintB2.Visible = false;
+                    btnPrintA2.Visible = false;
+                    btnPrintC2.Visible = true;
+                    btnPrintD2.Visible = false;
+                }
+            }
+            if (H1Red.Visible == true)
+            {
+                if (DrPrinters.SelectedItem.Value == "1")
+                {
+                    btnPrintA3.Visible = true;
+                    btnPrintB3.Visible = false;
+                    btnPrintC3.Visible = false;
+                    btnPrintD3.Visible = false;
+                }
+                else if (DrPrinters.SelectedItem.Value == "2")
+                {
+                    btnPrintB3.Visible = true;
+                    btnPrintA3.Visible = false;
+                    btnPrintC3.Visible = false;
+                    btnPrintD3.Visible = false;
+                }
+                else if (DrPrinters.SelectedItem.Value == "6")
+                {
+                    btnPrintB3.Visible = true;
+                    btnPrintA3.Visible = false;
+                    btnPrintC3.Visible = false;
+                    btnPrintD3.Visible = true;
+                }
+                else
+                {
+                    btnPrintB3.Visible = false;
+                    btnPrintA3.Visible = false;
+                    btnPrintC3.Visible = true;
+                    btnPrintD3.Visible = false;
+                }
+            }
+            if (H1Green.Visible == true)
+            {
+                if (DrPrinters.SelectedItem.Value == "1")
+                {
+                    btnPrintA4.Visible = true;
+                    btnPrintB4.Visible = false;
+                    btnPrintC4.Visible = false;
+                    btnPrintD4.Visible = false;
+
+                }
+                else if (DrPrinters.SelectedItem.Value == "2")
+                {
+                    btnPrintB4.Visible = true;
+                    btnPrintA4.Visible = false;
+                    btnPrintC4.Visible = false;
+                    btnPrintD4.Visible = false;
+                }
+                else if (DrPrinters.SelectedItem.Value == "6")
+                {
+                    btnPrintB4.Visible = false;
+                    btnPrintA4.Visible = false;
+                    btnPrintC4.Visible = false;
+                    btnPrintD4.Visible = true;
+                }
+                else
+                {
+                    btnPrintB4.Visible = false;
+                    btnPrintA4.Visible = false;
+                    btnPrintC4.Visible = true;
+                    btnPrintD4.Visible = false;
+                }
+            }
+
+            //Carga_Lotes(this.Session["IDSecuencia"].ToString());
+            //Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
+        }
+
+        private void Printers(string ID)
+        {
+            if (ID == "1")
+            {
+                pnlContents.Visible = true;
+                pnlContentsQR.Visible = false;
+                pnlContentsFT.Visible = false;
+                pnlContentsPaletAlv.Visible = false;
+            }
+            else if (ID == "2")
+            {
+                pnlContents.Visible = false;
+                pnlContentsQR.Visible = true;
+                pnlContentsFT.Visible = false;
+                pnlContentsPaletAlv.Visible = false;
+            }
+            else if (ID == "3")
+            {
+                pnlContents.Visible = false;
+                pnlContentsQR.Visible = false;
+                pnlContentsFT.Visible = true;
+                pnlContentsPaletAlv.Visible = false;
+            }
+            else if (ID == "6")
+            {
+                pnlContents.Visible = false;
+                pnlContentsQR.Visible = false;
+                pnlContentsFT.Visible = false;
+                pnlContentsPaletAlv.Visible = true;
+            }
+        }
+        //protected void checkSlot_change(object sender, EventArgs e)
+        //{
+        //    string onOff = chkOnOff.Checked ? "On" : "Off";
+        //    ClientScript.RegisterClientScriptBlock(this.GetType(), "", "alert('" + onOff + "')", true);
+        //}
+
+    }
+}

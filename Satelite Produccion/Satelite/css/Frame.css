@@ -1,0 +1,39 @@
+#mainnav :link, #mainnav :visited, #main #content #ticket, #mainnav, #main fieldset, #main h2, #main .foldable :link, #main .foldable :visited, div.trac-content, input[type="button"], input[type="button"]:hover, input[type="submit"], input[type="submit"]:hover, input[type="reset"], input[type="reset"]:hover {
+  box-shadow: none;
+}
+#content.ticket #ticket, #prefs, .wiki-toc {
+  background-color: #fbfbfb;
+}
+#ticket {
+  border-color: #E4E4E4;
+}
+#ticket {
+  background: #ffd;
+    background-color: rgb(255, 255, 221);
+  border: 1px solid #dd9;
+    border-top-color: rgb(221, 221, 153);
+    border-right-color: rgb(221, 221, 153);
+    border-bottom-color: rgb(221, 221, 153);
+    border-left-color: rgb(221, 221, 153);
+  border-radius: .4em;
+  margin-top: .2em;
+  padding: .5em 1em;
+  position: relative;
+}
+div.trac-content {
+  padding: .5em 1em;
+  margin: .3em auto;
+    margin-top: 0.3em;
+  border: 1px solid #e4e4e4;
+  border-radius: .5em;
+  box-shadow: .2em .3em 1.5em #eee;
+}
+body {
+  color: #383c3d;
+}
+body, th, tr {
+  font: normal 13px Verdana,Arial,'Bitstream Vera Sans',Helvetica,sans-serif;
+}
+body {
+  color: #000;
+}

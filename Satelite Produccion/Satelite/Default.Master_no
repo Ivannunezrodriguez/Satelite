@@ -1,0 +1,882 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Default.master.cs" Inherits="Satelite.Default" %>
+
+
+<!DOCTYPE html>
+
+<html>
+<head runat="server">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Viveros Rio Eresma</title>
+    <asp:ContentPlaceHolder ID="head" runat="server">
+
+    </asp:ContentPlaceHolder>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content=""/>
+    <meta name="author" content=""/>
+
+    <link href="css/Container.css" rel="stylesheet" />
+
+     <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.css" rel="stylesheet" />
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- MetisMenu CSS -->
+    <link href="css/plugins/metisMenu/metisMenu.min.css" rel="stylesheet"/>
+
+    <!-- Timeline CSS -->
+    <link href="css/plugins/timeline.css" rel="stylesheet"/>
+
+    <!-- Custom CSS -->
+    <link href="css/sb-admin-2.css" rel="stylesheet"/>
+
+    <!-- Morris Charts CSS -->
+    <link href="css/plugins/morris.css" rel="stylesheet"/>
+
+    <!-- Custom Fonts -->
+    <link href="font-awesome-4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"/>
+
+           <style id="gridStyles" runat="server" type="text/css">
+            body
+            {
+                font-family: Arial;
+                font-size: 10pt;
+            }
+            table
+            {
+                border: 1px solid #ccc;
+                border-collapse: collapse;
+            }
+            table th
+            {
+                color: #0090CB;
+                font-weight: bold;
+            }
+            table th, table td
+            {
+                padding: 5px;
+                border: 1px solid #ccc;
+            }
+            table, table table td
+            {
+                border: 0px solid #ccc;
+            }
+            thead
+            {
+                display: table-header-group;
+            }
+            tfoot
+            {
+                display: table-footer-group;
+            }
+
+            /*Loading page*/
+            .jm-loadingpage {
+                position: fixed;
+                left: 0px;
+                top: 0px;
+                width: 100%;
+                height: 100%;
+                z-index: 999999999;
+                background: url(images/rastreando.gif) center no-repeat #fff;
+            }
+            /*Loading page*/
+
+
+            .overlay  
+            {
+              position: fixed;
+              z-index: 98;
+              top: 0px;
+              left: 0px;
+              right: 0px;
+              bottom: 0px;
+                background-color: #aaa; 
+                filter: alpha(opacity=80); 
+                opacity: 0.8; 
+            }
+            .overlayContent
+            {
+              z-index: 99;
+              margin: 250px auto;
+              width: 80px;
+              height: 80px;
+            }
+            .overlayContent h2
+            {
+                font-size: 18px;
+                font-weight: bold;
+                color: #000;
+            }
+            .overlayContent img
+            {
+              width: 80px;
+              height: 80px;
+            }
+
+            /*table th, table td {
+                padding: 0px;
+                border: 0px solid #ccc;
+            }
+
+            .treeNode
+            {
+                color:blue;
+                font:14px Arial, Sans-Serif;
+                border:none;
+                line-grid:unset;
+            }
+            .rootNode
+            {
+                font-size:18px;
+                width:100%;
+                border:none;
+                line-grid:unset;*/
+                /*border-bottom:Solid 1px black;*/
+            /*}
+            .leafNode
+            {*/
+                /*border:Dotted 2px black;*/
+                /*padding:4px;
+                background-color:#eeeeee;
+                font-weight:bold;
+                border:none;
+                line-grid:unset;
+            }*/
+        </style>
+
+
+
+        <style type="text/css">
+              /* The switch - the box around the slider */
+
+            .gridinput {
+                width: 100px;
+                padding: 2px 4px;
+            }
+            .gridCabAinput {
+                width: 100px;
+                padding: 2px 4px;
+            }
+            .gridCabBinput {
+                width: 120px;
+                padding: 2px 4px;
+            }
+            .gridContAinput {
+                width: 70px;
+                padding: 2px 4px;
+            }
+            .gridContBinput {
+                width: 100px;
+                padding: 2px 4px;
+            }
+            .gridContCinput {
+                width: 50px;
+                padding: 2px 4px;
+            }
+            .gridListAinput {
+                width: 70px;
+                padding: 2px 4px;
+            }
+            .gridListBinput {
+                width: 100px;
+                padding: 2px 4px;
+            }
+            .gridListCinput {
+                width: 50px;
+                padding: 2px 4px;
+            }
+            .gridListDinput {
+                width: 120px;
+                padding: 2px 4px;
+            }
+
+            .switch {
+              position: absolute;
+              display: inline-block;
+              width: 45px;
+              height: 28px;
+            }
+
+            /* Hide default HTML checkbox */
+            .switch input {
+              opacity: 0;
+              width: 0;
+              height: 0;
+            }
+
+            /* The slider */
+            .slider {
+              position: absolute;
+              cursor: pointer;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background-color: #ccc;
+              -webkit-transition: .4s;
+              transition: .4s;
+            }
+
+            .slider:before {
+              position: absolute;
+              content: "";
+              height: 20px;
+              width: 20px;
+              left: 4px;
+              bottom: 4px;
+              background-color: white;
+              -webkit-transition: .4s;
+              transition: .4s;
+            }
+
+            input:checked + .slider {
+              background-color: #0caeb4;
+            }
+
+            input:focus + .slider {
+              box-shadow: 0 0 1px #21c9cf;
+            }
+
+            input:checked + .slider:before {
+              -webkit-transform: translateX(20px);
+              -ms-transform: translateX(20px);
+              transform: translateX(20px);
+            }
+
+            /* Rounded sliders */
+            .slider.round {
+              border-radius: 34px;
+            }
+
+            .slider.round:before {
+              border-radius: 50%;
+            } 
+
+
+            .juntos{
+                height:4px;
+                padding:-10px;
+                top:-5px;
+            }
+
+           .file-upload {
+                display: inline-block;
+                overflow: hidden;
+                text-align: center;
+                vertical-align: middle;
+                font-family: Arial;
+                /*border: 1px solid #124d77;*/
+                background: #d5e450;
+                color: #fff;
+                border-radius: 6px;
+                -moz-border-radius: 6px;
+                cursor: pointer;
+                text-shadow: #000 1px 1px 2px;
+                -webkit-border-radius: 4px;
+            }
+
+            .file-upload:hover {
+                    background: -webkit-gradient(linear, left top, left bottom, color-stop(0.05, #0061a7), color-stop(1, #007dc1));
+                    background: -moz-linear-gradient(top, #0061a7 5%, #007dc1 100%);
+                    background: -webkit-linear-gradient(top, #0061a7 5%, #007dc1 100%);
+                    background: -o-linear-gradient(top, #0061a7 5%, #007dc1 100%);
+                    background: -ms-linear-gradient(top, #0061a7 5%, #007dc1 100%);
+                    background: linear-gradient(to bottom, #0061a7 5%, #007dc1 100%);
+                    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#0061a7', endColorstr='#007dc1',GradientType=0);
+                    background-color: #0061a7;
+            }
+
+            /* The button size */
+            .file-upload {
+                height: 35px;
+            }
+
+            .file-upload, .file-upload span {
+                    width: 100%;
+            }
+
+            .file-upload input {
+                        top: 0;
+                        left: 0;
+                        margin: 0;
+                        font-size: 11px;
+                        font-weight: bold;
+                        /* Loses tab index in webkit if width is set to 0 */
+                        opacity: 0;
+                        filter: alpha(opacity=0);
+            }
+
+            .file-upload strong {
+                        font: normal 12px Tahoma,sans-serif;
+                        text-align: center;
+                        vertical-align: middle;
+            }
+
+            .file-upload span {
+                        top: 0;
+                        left: 0;
+                        display: inline-block;
+                        /* Adjust button text vertical alignment */
+                        padding-top: 5px;
+            }
+
+    </style>
+
+    <script src="<%=Page.ResolveUrl("js/jquery-1.11.0.js") %>" type="text/javascript"></script>
+
+    <script>
+        //$(function () {
+        //    $("[data-toggle='tooltip']").tooltip();
+        //});
+    </script>
+
+    <script type="text/javascript">
+        //$(document).ready(function () {
+        //    $("#BtnImprimir").click(imprimirDiv);    //Asociando la función "imprimirDiv" al clic del botón para Imprimir Reporte
+        //});
+
+        $(document).ready(function () {
+            $(".jm-loadingpage").fadeOut("slow");;
+        });
+
+        function imprimirDiv() {
+            var divImprimir = $("div[id$='PNreportLista']").parent();        //Obteniendo el padre del DIV que contiene al reporte 
+            var estilos = $("head style[id$='ReportControl_styles']");    //Obteniendo los estilos del reporte
+            newWin = window.open("");        //Abriendo una nueva ventana
+
+            //Construyendo el HTML de la nueva ventana, con los estilos del reporte y el div que contiene el reporte
+            newWin.document.write('<html xmlns="http://www.w3.org/1999/xhtml"><head><style type="text/css">' + estilos.html() + '</style></head><body>' + divImprimir.html() + '</body>');
+            newWin.document.close();        //Finalizando la escritura
+            newWin.print();        //Imprimir contenido de nueva ventana
+            newWin.close();        //Cerrar nueva ventana
+        }
+    </script>
+
+
+
+</head>
+<body>
+    <div class="jm-loadingpage"></div>
+    <form id="form1" runat="server">
+     <asp:ScriptManager ID="ScriptManager1" runat="server"></asp:ScriptManager>
+
+<%--        <asp:ContentPlaceHolder ID="ContentPlaceHolder2" runat="server">
+         <div class="centrado position-fixed" id="DivFoto" runat="server"  visible="false" style="z-index:1100; width:100%; height:100%; background-color: rgba(50,50,50,0.5);">
+                <div class="row">
+                    <a id="AFoto" runat="server"  data-toggle="lightbox" href="#demolightbox" class="span2 thumbnail">
+                        <p>Open lightbox</p>
+                        <asp:ImageButton id="ImgFoto" runat="server" src="img_fjords.jpg"  onclick="ImgFoto_Click"/>
+                        <p>Pie lightbox</p>
+                    </a>
+            </div>
+         </div>
+        </asp:ContentPlaceHolder>--%>
+
+        <div id="wrapper" runat="server" visible="true">
+<%--<Inicio UpdatePanel: Evita la recarga de la página al seleccionar cualquier función>--%>
+<div>
+    <asp:UpdatePanel ID="UpdatePanel1" runat="server" UpdateMode="Conditional">
+        <ContentTemplate>
+            <!-- Navigation -->
+            <nav runat="server" id="NavMenu" visible="true" class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#" runat="server" onserverclick="AViveros_clik">Viveros Rio Eresma</a>
+                   <button id="BtMenus" type="button" runat="server" style="width:10px; border-style:none; background-color:transparent; padding: 10px ;" class="pull-center text-muted "  onserverClick="BtMenus_Click"><i id="MasMinMenu" runat="server" title="Muestra y oculta el Menú lateral." class="fa fa-chevron-left fa-2x"></i></button>         
+                </div>
+                <!-- /.navbar-header -->
+                 <div class="navbar-header" style="text-align:center; width:70%;">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <h3 id="H3Titulo" runat="server" visible="true">  <i class="fa fa-long-arrow-right"></i> <small>  </small></h3>
+                    <h3 id="H3Desarrollo" runat="server" style="color:red;" visible="false"> <i class="fa fa-long-arrow-right"></i> <small></small></h3>                
+                </div>
+
+                <ul class="nav navbar-top-links navbar-right">
+                    <li class="dropdown">
+                        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                            <i class="fa fa-envelope fa-fw"></i>  <i class="fa fa-caret-down"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-messages">
+                            <li>
+                                <a href="#">
+                                    <div>
+                                        <strong>Panel de Control</strong>
+                                        <span class="pull-right text-muted">
+                                            <em>ayuda</em>
+                                        </span>
+                                    </div>
+                                    <div>Datos generales de la aplicación Rio Eresma y acceso
+                                        a los formularios principales 
+                                    </div>
+                                </a>
+                            </li>
+                            <li class="divider"></li>
+                            <li>
+                                <a href="#">
+                                    <div>
+                                        <strong>Importaciones</strong>
+                                        <span class="pull-right text-muted">
+                                            <em>ayuda</em>
+                                        </span>
+                                    </div>
+                                    <div>Acceso a las importaciones en GoldenSoft desde archivo a tabla</div>
+                                </a>
+                            </li>
+                            <li class="divider"></li>
+                            <li>
+                                <a href="#">
+                                    <div>
+                                        <strong>Tablas</strong>
+                                        <span class="pull-right text-muted">
+                                            <em>ayuda</em>
+                                        </span>
+                                    </div>
+                                    <div>Selección de una tabla y vista del contenido de sus datos con inserción, modificación o eliminación de información</div>
+                                </a>
+                            </li>
+                            <li class="divider"></li>
+                            <li>
+                                <a class="text-center" href="#">
+                                    <strong>
+                                        Por determinar
+                                    </strong>
+                                    <i class="fa fa-angle-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                        <!-- /.dropdown-messages -->
+                    </li>
+                    <!-- /.dropdown -->
+                    <li class="dropdown">
+                        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                            <i class="fa fa-tasks fa-fw"></i>  <i class="fa fa-caret-down"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-tasks">
+                            <li>
+                                <a href="#">
+                                    <div>
+                                        <p>
+                                            <strong>Tarea 1</strong>
+                                            <span class="pull-right text-muted">40% Completo</span>
+                                        </p>
+                                        <div class="progress progress-striped active">
+                                            <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: 40%">
+                                                <span class="sr-only">40% Completo (informativo)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li class="divider"></li>
+                            <li>
+                                <a href="#">
+                                    <div>
+                                        <p>
+                                            <strong>Tarea 2</strong>
+                                            <span class="pull-right text-muted">20% Completo</span>
+                                        </p>
+                                        <div class="progress progress-striped active">
+                                            <div class="progress-bar progress-bar-info" role="progressbar" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" style="width: 20%">
+                                                <span class="sr-only">20% Completo</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li class="divider"></li>
+                            <li>
+                                <a href="#">
+                                    <div>
+                                        <p>
+                                            <strong>Tarea 3</strong>
+                                            <span class="pull-right text-muted">60% Completo</span>
+                                        </p>
+                                        <div class="progress progress-striped active">
+                                            <div class="progress-bar progress-bar-warning" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 60%">
+                                                <span class="sr-only">60% Completo (precaución)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li class="divider"></li>
+                            <li>
+                                <a href="#">
+                                    <div>
+                                        <p>
+                                            <strong>Tarea 4</strong>
+                                            <span class="pull-right text-muted">80% Completo</span>
+                                        </p>
+                                        <div class="progress progress-striped active">
+                                            <div class="progress-bar progress-bar-danger" role="progressbar" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100" style="width: 80%">
+                                                <span class="sr-only">80% Completo (peligro)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li class="divider"></li>
+                            <li>
+                                <a class="text-center" href="#">
+                                    <strong>Ver todas las tareas</strong>
+                                    <i class="fa fa-angle-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                        <!-- /.dropdown-tasks -->
+                    </li>
+                    <!-- /.dropdown -->
+                    <li class="dropdown">
+                        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                            <i class="fa fa-bell fa-fw"></i>  <i class="fa fa-caret-down"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-alerts">
+
+                            <li>
+                            <a href="#" class="list-group-item">
+                                        <i class="fa fa-comment fa-fw"></i> Importación para GoldenSoft
+                                        <span class="pull-right text-muted small"><em>4 minutos</em>
+                                        </span>
+                                    </a>
+                            </li>
+                            <li>
+                                    <a href="#" class="list-group-item">
+                                        <i class="fa fa-twitter fa-fw"></i> Preparación fichajes Recodat
+                                        <span class="pull-right text-muted small"><em>12 minutos</em>
+                                        </span>
+                                    </a>
+                            </li>
+                            <li>
+                                    <a href="#" class="list-group-item">
+                                        <i class="fa fa-envelope fa-fw"></i> Proceso Paletizado
+                                        <span class="pull-right text-muted small"><em>27 minutos</em>
+                                        </span>
+                                    </a>
+                            </li>
+                            <li>
+                                    <a href="#" class="list-group-item">
+                                        <i class="fa fa-tasks fa-fw"></i> Etiquetado fitosanitario
+                                        <span class="pull-right text-muted small"><em>43 minutos</em>
+                                        </span>
+                                    </a>
+                            </li>
+                            <li>
+                                    <a href="#" class="list-group-item">
+                                        <i class="fa fa-upload fa-fw"></i> Usuarios con acceso
+                                        <span class="pull-right text-muted small"><em>11:32 AM</em>
+                                        </span>
+                                    </a>
+                            </li>
+                            <li>
+                                    <a href="#" class="list-group-item">
+                                        <i class="fa fa-bolt fa-fw"></i> Usuarios en sesión
+                                        <span class="pull-right text-muted small"><em>11:13 AM</em>
+                                        </span>
+                                    </a>
+                            </li>
+                            <li>
+                                    <a href="#" class="list-group-item">
+                                        <i class="fa fa-bolt fa-fw"></i> Usuarios fuera de sesión
+                                        <span class="pull-right text-muted small"><em>23:45 AM</em>
+                                        </span>
+                                    </a>
+                            </li>
+
+                            <li>
+                                <a class="text-center" href="#">
+                                    <strong>Ver todas las Alertas</strong>
+                                    <i class="fa fa-angle-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                        <!-- /.dropdown-alerts -->
+                    </li>
+                    <!-- /.dropdown -->
+                    <li class="dropdown">
+                        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                            <i class="fa fa-user fa-fw"></i>  <i class="fa fa-caret-down"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-user">
+                            <li><a href="#"><i class="fa fa-user fa-fw"></i> Perfil de usuario</a>
+                            </li>
+                            <li><a href="#"><i class="fa fa-gear fa-fw"></i> Configuración</a>
+                            </li>
+                            <li class="divider"></li>
+                            <li><a href="login.aspx"><i class="fa fa-sign-out fa-fw"></i> Salir</a>
+                            </li>
+                        </ul>
+                        <!-- /.dropdown-user -->
+                    </li>
+                    <!-- /.dropdown -->
+                </ul>
+
+                <!-- /.navbar-top-links -->
+                <div id="DivEstructura" runat="server" visible="true" class="navbar-default sidebar" role="navigation">
+                    <div class="sidebar-nav navbar-collapse">
+                        <ul class="nav" id="side-menu">
+                            <li class="sidebar-search">
+                                <div class="input-group custom-search-form">
+                                    <input type="text" class="form-control" placeholder="Search..." />
+                                    <span class="input-group-btn">
+                                    <button class="btn btn-default" type="button">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </span>
+                                </div>
+                                <!-- /input-group -->
+                            </li>
+                            <li>
+                                <a class="active" id="AInicio" href="#" runat="server" onserverclick="APrincipal_clik"><i class="fa fa-dashboard fa-fw"></i> Panel de Control</a>
+                            </li>
+                            <li>
+                                <a class="active" id="AImportaciones" href="#" onserverclick="AImportaciones_clik" runat="server" visible="false" ><i class="fa fa-bar-chart-o fa-fw"></i> Importaciones<span class="fa arrow"></span></a>
+                                <ul id="UImportaciones" runat="server" class="nav nav-second-level collapse">
+                                    <li>
+                                        <a href="#" id="ATabla"  runat="server" onserverclick="AAMigraTabla_clik"><i class="fa fa-long-arrow-right"></i> Desde Tablas</a>
+                                    </li>
+                                    <li>
+                                        <a href="#">Desde Archivo</a>
+                                    </li>
+                                </ul>
+                                <!-- /.nav-second-level -->
+                            </li>
+
+
+                            <!-- /.Consultas Generales -->
+                            <li>
+                                <a class="active" id="AConsultas" href="#" onserverclick="AGeneral_clik" visible="false" runat="server"><i class="fa fa-bar-chart-o fa-fw"></i> Consultas Generales<span class="fa arrow"></span></a>
+                                <ul id="UConsultas" runat="server" class="nav nav-second-level collapse">
+                                    <li>
+                                        <a href="#" id="BBuscaDatos" runat="server" onserverclick="ABuscaDatos_clik"><i class="fa fa-long-arrow-right"></i> Consultas datos Generales</a>
+                                    </li>
+                                    <li>                                    
+                                        <a href="#" id="BBuscaFlujos" runat="server" onserverclick="ABuscaFlujo_clik"><i class="fa fa-long-arrow-right"></i> Consultas Flujos Generales</a>
+                                    </li>
+                                </ul>
+                                <!-- /.nav-second-level -->
+                            </li>
+
+
+
+
+
+
+                            <li>
+                                <a class="active" id="AEstructura" href="#" onserverclick="AEstructura_clik" visible="false" runat="server"><i class="fa fa-bar-chart-o fa-fw"></i> Estructura Documental<span class="fa arrow"></span></a>
+                                <ul id="UEstructura" runat="server" class="nav nav-second-level collapse">
+                                    <li>
+                                        <a href="#" id="BArchivo"  runat="server" onserverclick="AAltaArchivo_clik"><i class="fa fa-long-arrow-right"></i> Definir Archivos</a>
+                                    </li>
+                                    <li>                                    
+                                        <a href="#" id="BCampo" runat="server" onserverclick="AaltaCampo_clik"><i class="fa fa-long-arrow-right"></i> Definir Campos</a>
+                                    </li>
+                                    <%-- <li>
+                                       <a href="#" id="BBusca" runat="server" onserverclick="ABuscaArchivo_clik"><i class="fa fa-long-arrow-right"></i>Consultas Generales</a>
+                                    </li>--%>
+                                    <li>
+                                        <a href="#" id="BtablaVal" visible="false" runat="server" onserverclick="BtablaVal_clik"><i class="fa fa-long-arrow-right"></i> Tablas Validación</a>
+                                    </li>
+                                    <li>
+                                        <a href="#" id="BTablaArchivo" visible="false" runat="server" onserverclick="BTablaArchivo_clik"><i class="fa fa-long-arrow-right"></i> Flujos de Trabajo</a>
+                                    </li>
+                                </ul>
+                                <!-- /.nav-second-level -->
+                            </li>
+
+                            <li>
+                                <a class="active" id="AUbicaFisi" href="#" onserverclick="AUbicaFisi_clik" visible="false" runat="server"><i class="fa fa-bar-chart-o fa-fw"></i> Ubicación Física<span class="fa arrow"></span></a>
+                                <ul id="UlFisica" runat="server" class="nav nav-second-level collapse">
+                                    <li>
+                                        <a href="#" id="CArchivo" runat="server" onserverclick="CArchivo_clik"><i class="fa fa-long-arrow-right"></i> Almacén o Campo Cultivo</a>
+                                    </li>
+                                    <li>                                    
+                                        <a href="#" id="CCampo" runat="server" onserverclick="CCampo_clik"><i class="fa fa-long-arrow-right"></i> Planta o Zona</a>
+                                    </li>
+                                    <li>                                    
+                                        <a href="#" id="CBusca" runat="server" onserverclick="CBusca_clik"><i class="fa fa-long-arrow-right"></i> Pasillo</a>
+                                    </li>
+                                    <li>
+                                        <a href="#" id="CtablaVal" runat="server" onserverclick="CTablaval_clik"><i class="fa fa-long-arrow-right"></i> Celda o Palet</a>
+                                    </li>
+                                    <li>
+                                        <a href="#" id="CTablaArchivo" runat="server" onserverclick="CContenedor_clik"><i class="fa fa-long-arrow-right"></i> Contenedor o Envase</a>
+                                    </li>
+                                </ul>
+                                <!-- /.nav-second-level -->
+                            </li>
+                           <%-- <li>
+                                <a href="#"><i class="fa fa-wrench fa-fw"></i> Formularios<span class="fa arrow"></span></a>
+                                <ul class="nav nav-second-level">
+                                    <li>
+                                        <a href="#"> Empleados</a>
+                                    </li>
+                                    <li>
+                                        <a href="#"> Productos</a>
+                                    </li>
+                                    <li>
+                                        <a href="#"> Proveedores</a>
+                                    </li>
+                                    <li>
+                                        <a href="#"> Clientes</a>
+                                    </li>
+                                    <li>
+                                        <a href="#"> Campos Cultivo</a>
+                                    </li>
+                                    <li>
+                                        <a href="#"> Fichajes</a>
+                                    </li>
+                                </ul>
+                                <!-- /.nav-second-level -->
+                            </li>--%>
+                            <li>
+                                <a class="active" id="ACodeQR" href="#" onserverclick="ACodeQR_clik" runat="server"><i class="fa fa-sitemap fa-fw"></i> Codigos QR<span class="fa arrow"></span></a>
+                                <ul id="UCodeQR" runat="server" class="nav nav-second-level collapse">
+                                   <%-- <li>
+                                        <a href="#" runat="server" onserverclick="ALoteAuto_clik"><i class="fa fa-long-arrow-right"></i> Generación e impresión de códigos de lote</a>
+                                    </li>--%>
+                                    <li>
+                                        <a href="#" runat="server" onserverclick="ALoteAutoS_clik"><i class="fa fa-long-arrow-right"></i> Generación e impresión de códigos de lote</a>
+                                    </li>
+                                  <%--  <li>
+                                        <a href="LoteRevi.aspx"><i class="fa fa-long-arrow-right"></i> Revisión lotes y preparación importación a GoldenSoft</a>
+                                    </li>--%>
+                                    <%-- <li>
+                                         <a href="#" runat="server" onserverclick="ALoteRevision_clik"><i class="fa fa-long-arrow-right"></i> Revisión lotes y preparación importación a GoldenSoft sobre lista</a>
+                                    </li>--%>
+                                    <li>
+                                         <a href="#" runat="server" onserverclick="ALoteRevisionS_clik"><i class="fa fa-long-arrow-right"></i> Revisión lotes y preparación importación a GoldenSoft sobre lista</a>
+                                    </li>
+                                
+                                   <%-- <li>
+                                        <a href="LoteManu.aspx"><i class="fa fa-long-arrow-right"></i> Generación lotes manuales (para lotes externos)</a>
+                                    </li>--%>
+                                    <li>
+                                        <a href="#" runat="server" onserverclick="AOrdenCompra_clik"><i class="fa fa-long-arrow-right"></i> Compra de planta</a>
+                                    </li>
+                                </ul>
+                                <!-- /.nav-second-level -->
+                            </li>
+                            <li>
+                                <a class="active" id="AExpediciones" href="#" onserverclick="AExpediciones_clik" runat="server"><i class="fa fa-sitemap fa-fw"></i> Expediciones<span class="fa arrow"></span></a>
+                                <ul id="UExpediciones" runat="server" class="nav nav-second-level collapse">
+                                    <%--<li>
+                                        <a href="OrdenCarga.aspx"><i class="fa fa-long-arrow-right"></i> Órdenes de Carga</a>
+                                    </li>  --%>
+                                    <li>
+                                        <a href="#" runat="server" onserverclick="AOrdenCargaLin_clik"><i class="fa fa-long-arrow-right"></i> Órdenes de Carga</a>
+                                    </li>   
+                                </ul>
+                                <!-- /.nav-second-level -->
+                            </li>
+                            <li id="Nominas" runat="server" visible="false">
+                                <a class="active" id="ANominas" onserverclick="ANominas_clik" runat="server" href="#"><i class="fa fa-sitemap fa-fw"></i> Personal<span class="fa arrow"></span></a>
+                                <ul id="UNominas" runat="server" class="nav nav-second-level collapse">
+                                    <li>
+    <%--                                    <asp:UpdatePanel ID="Update" runat="server" UpdateMode="Conditional">      
+                                            <Triggers>
+                                                <asp:AsyncPostBackTrigger ControlID="LinkNomina" EventName="Click" />
+                                            </Triggers>
+                                            <ContentTemplate>--%>
+                                       <%-- <asp:UpdatePanel ID="UpdatePanel1" runat="server">
+                                         <ContentTemplate>--%>
+                                                <asp:LinkButton id="LinkNomina" type="button" runat="server" style="width:100%; border-style:none; background-color:transparent;" class="pull-left "  onClick="BtLinkNomina_Click" Text=" Nominas"></asp:LinkButton>    
+                                         <%--</ContentTemplate>
+                                        </asp:UpdatePanel>--%>
+    <%--                                        </ContentTemplate>
+                                         </asp:UpdatePanel>--%>
+                                        <%--<a id="MenuNomina" href="RecoNomina.aspx"><i class="fa fa-long-arrow-right"></i> Nominas de Recodat</a>--%>          
+                                    </li>      
+                                    <li>
+                                         <asp:LinkButton id="LinkFirma" type="button" runat="server" style="width:100%; border-style:none; background-color:transparent;" class="pull-left "  onClick="BtLinkFirma_Click" Text=" Firma Electrónica"></asp:LinkButton>    
+                                    </li>           
+                                </ul>
+                            </li> 
+                        </ul>
+                    </div>
+                    <!-- boton actualiza tablas -->
+                    <!-- /.sidebar-collapse -->
+                    <asp:Button runat="server" ID="BtUdTables" Visible="false" tooltip="Elimina Tablas en Desarrollo y vuelve a copiarlas desde Producción" BorderStyle="None" border="0" CssClass="btn btn-primary btn-block" Width="100%"  Text="Actualiza Tablas" OnClick="UpdateTables_Click"/>                                                    
+                </div>
+
+                <!-- /.navbar-static-side -->
+            </nav>
+            <!-- Navigation -->
+
+
+            <div class="row" id="pagevistaform" visible="true" runat="server">
+    <%--            <div class="col-lg-1" >
+                      
+                </div>--%>
+               <%-- <asp:UpdateProgress ID="Progress" runat="server" AssociatedUpdatePanelID="Update">
+                    <ProgressTemplate>--%>
+               <%-- <asp:UpdateProgress ID="UpdateProgress1" runat="server" DisplayAfter="0" AssociatedUpdatePanelID="UpdatePanel1">
+                    <ProgressTemplate>
+                        <div class="overlay" />
+                        <div class="overlayContent">
+                            <h2>Loading...</h2>--%>
+                        <div class="centrado"  ID="DivProgress" runat="server" visible="false" style="z-index:1100;">
+                            <img src="images/loading-buffering.gif" alt="placeholder" style="border: 0px; overflow:auto;" /> 
+                        </div>
+                   <%-- </ProgressTemplate>
+                </asp:UpdateProgress>--%>
+                        <%--</div>--%>
+    <%--                </ProgressTemplate>
+                </asp:UpdateProgress>--%>
+
+    <%--            <asp:UpdatePanel ID="UpdatePanel3" runat="server" UpdateMode="Conditional">      
+                    <Triggers>
+                        <asp:AsyncPostBackTrigger ControlID="BtnAcepta" EventName="Click" />
+                    </Triggers>
+                    <ContentTemplate>    --%>                    
+                        <div runat="server" id="DvPreparado" visible="false"  style=" width: 30%;z-index: 999;-moz-border-radius: 10px;-webkit-border-radius: 10px;border-radius: 10px;border: 0px solid black; box-shadow: inset 0 0 5px 5px rgb(157,157,155);" class="alert alert-grey centrado">
+                            <button type="button" class="close" data-dismiss="alert">&times;</button> 
+                            <i id="I1" runat="server" class="fa fa-exclamation-circle fa-2x"></i>
+                            <asp:Label runat="server" class="alert alert-grey alert-dismissable" ID="Lbmensaje" BorderStyle="None" border="0" Width="100%" Text=" Se eliminarán los registros actuales con una nueva consulta ¿Desea continuar?"  />
+                            <div class="row" id="cuestion" visible="true" runat="server">
+                                <div class="col-lg-6">
+                                    <asp:Button runat="server" ID="BtnAcepta" Visible="true" tooltip="Aceptar" BorderStyle="None" border="0" CssClass="btn btn-primary btn-block" Width="100%"  Text="Aceptar" OnClick="checkSi_Click"/>                                                    
+                                    </div>
+                                <div class="col-lg-6">
+                                    <asp:Button runat="server" ID="BTnNoAcepta" Visible="true" tooltip="Cancelar" BorderStyle="None" border="0" CssClass="btn btn-primary btn-block" Width="100%"  Text="Cerrar" OnClick="checkNo_Click"/>                 
+                                </div>
+                            </div>
+                                <div class="row" id="Asume" visible="false" runat="server">
+                                <div class="col-lg-12">
+                                    <asp:Button runat="server" ID="btnasume" Visible="true" tooltip="Aceptar" BorderStyle="None" border="0" CssClass="btn btn-primary btn-block" Width="100%"  Text="Aceptar" OnClick="checkOk_Click"/>
+                                </div>
+                            </div>
+                        </div>
+    <%--                </ContentTemplate>
+                </asp:UpdatePanel>--%>
+
+
+            <div class="col-lg-12">
+            <!-- Contenedor paginas maestras -->
+                <div>
+                    <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server">
+
+                    </asp:ContentPlaceHolder>
+                </div>
+            </div>
+        </div>
+    <%--<cierre UpdatePanel>--%>          
+        </ContentTemplate>
+    </asp:UpdatePanel>
+    </div> 
+    </div>
+</form>
+</body>
+</html>

@@ -1,0 +1,356 @@
+
+/*-----------------------Formulario de Login-------------------------------------*/
+body {
+    margin: 0;
+    padding: 0;
+    /*background: url("background.jpg");*/
+    background-size: cover;
+    font-family: sans-serif;
+}
+
+.loginBox {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 350px;
+    height: 420px;
+    padding: 80px 40px;
+    box-sizing: border-box;
+    background: #141414d4;
+    border-radius: 20px;
+}
+
+.loginBoxCapcha {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 480px;
+    height: 700px;
+    padding: 80px 40px;
+    box-sizing: border-box;
+    background: #146414AA;
+    border-radius: 20px;
+}
+
+.modloginBox {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 350px;
+    height: 520px;
+    padding: 80px 40px;
+    box-sizing: border-box;
+    background: rgba(40,40,40,0.8);
+    border-radius: 20px;
+}
+
+.RegisterBox {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 650px;
+    height: 920px;
+    padding: 80px 40px;
+    box-sizing: border-box;
+    background: rgba(40,40,40,0.8);
+    border-radius: 20px;
+}
+
+#btnNuevo:disabled {
+    background: #808080;
+    color: #262626;
+}
+
+#btnEditar:disabled {
+    background: #808080;
+    color: #262626;
+}
+
+h2 {
+    margin: 0;
+    padding: 0 0 20px;
+    color: #3d8248;
+    text-align: center;
+}
+
+
+
+.loginBox p {
+    padding: 0;
+    margin: 0;
+    font-weight: bold;
+    color: #fff;
+}
+
+.loginBoxCapcha p {
+    padding: 0;
+    margin: 0;
+    font-weight: bold;
+    color: #fff;
+}
+
+.modloginBox p {
+    padding: 0;
+    margin: 0;
+    font-weight: bold;
+    color: #fff;
+}
+
+.blanco {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 8.5pt;
+    color: #FFFFFF;
+}
+
+.negro {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 8.5pt;
+    color: #000;
+}
+
+.verde {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    color: #68ea2c;
+}
+
+.naranja {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    color: #f3bd41;
+}
+
+
+.boton {
+    text-align:center;
+}
+
+
+.loginBoxCapcha input {
+    width: 100%;
+    margin-bottom: 11px;
+}
+
+    .loginBoxCapcha input[type="text"], .loginBoxCapcha input[type="password"] {
+        border: none;
+        border-bottom: 2px solid #fff;
+        background: transparent;
+        outline: none;
+        height: 40px;
+        color: #fff;
+        font-size: 16px;
+        border-radius: 20px;
+        text-align: center;
+    }
+
+
+    .loginBoxCapcha input[type="submit"] {
+        border-style: none;
+        border-color: inherit;
+        border-width: medium;
+        outline: none;
+        height: 40px;
+        color: #fff;
+        font-size: 16px;
+        background: #3d8248;
+        cursor: pointer;
+        border-radius: 20px;
+        box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+        /*posicion centrado del boton #1E90FF;*/
+        margin-left: 45px;
+    }
+
+
+        .loginBoxCapcha input[type="submit"]:hover {
+            background: #9afa6e;
+            color: #262626;
+        }
+
+
+
+
+.loginBoxCapcha a {
+    color: #e0a110;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+
+.loginBox input {
+    width: 100%;
+    margin-bottom: 11px;
+}
+
+    .loginBox input[type="text"], .loginBox input[type="password"] {
+        border: none;
+        border-bottom: 2px solid #fff;
+        background: transparent;
+        outline: none;
+        height: 40px;
+        color: #fff;
+        font-size: 16px;
+        border-radius: 20px;
+        text-align: center;
+    }
+
+
+    .loginBox input[type="submit"] {
+        border-style: none;
+        border-color: inherit;
+        border-width: medium;
+        outline: none;
+        height: 40px;
+        color: #fff;
+        font-size: 16px;
+        background: #3d8248;
+        cursor: pointer;
+        border-radius: 20px;
+        box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+        /*posicion centrado del boton #1E90FF;*/
+        margin-left: 45px;
+    }
+
+
+        .loginBox input[type="submit"]:hover {
+            background: #9afa6e;
+            color: #262626;
+        }
+
+
+
+
+.loginBox a {
+    color: #e0a110;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+
+.RegisterBox input {
+    width: 100%;
+    margin-bottom: 11px;
+}
+
+    .RegisterBox input[type="text"], .RegisterBox input[type="password"] {
+        border: none;
+        border-bottom: 2px solid #fff;
+        background: transparent;
+        outline: none;
+        height: 40px;
+        color: #fff;
+        font-size: 16px;
+        border-radius: 20px;
+        text-align: center;
+    }
+
+
+    .RegisterBox input[type="submit"] {
+        border-style: none;
+        border-color: inherit;
+        border-width: medium;
+        outline: none;
+        height: 40px;
+        color: #fff;
+        font-size: 16px;
+        background: #3d8248;
+        cursor: pointer;
+        border-radius: 20px;
+        box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+        /*posicion centrado del boton #1E90FF;*/
+        margin-left: 45px;
+    }
+
+
+        .RegisterBox input[type="submit"]:hover {
+            background: #9afa6e;
+            color: #262626;
+        }
+
+
+
+
+.RegisterBox a {
+    color: #e0a110;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+
+
+
+
+
+
+
+.modloginBox input {
+    width: 100%;
+    margin-bottom: 11px;
+}
+
+    .modloginBox input[type="text"], .modloginBox input[type="password"] {
+        border: none;
+        border-bottom: 2px solid #fff;
+        background: transparent;
+        outline: none;
+        height: 40px;
+        color: #fff;
+        font-size: 16px;
+        border-radius: 20px;
+        text-align: center;
+    }
+
+
+    .modloginBox input[type="submit"] {
+        border-style: none;
+        border-color: inherit;
+        border-width: medium;
+        outline: none;
+        height: 40px;
+        color: #fff;
+        font-size: 16px;
+        background: #1E90FF;
+        cursor: pointer;
+        border-radius: 20px;
+        box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+        /*posicion centrado del boton*/
+        margin-left: 45px;
+    }
+
+
+        .modloginBox input[type="submit"]:hover {
+            background: #9afa6e;
+            color: #262626;
+        }
+
+
+
+
+.modloginBox a {
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+
+
+/*::placeholder {
+    color: rgba(255,255,255,0.5);
+}*/
+
+
+.user {
+    width: 100px;
+    height: 100px;
+    overflow: hidden;
+    position: absolute;
+    top: calc(-100px/2);
+    left: calc(50% - 50px);
+    border-radius: 50%;
+}
+ 
+
+

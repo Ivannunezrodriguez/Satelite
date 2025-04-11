@@ -1,0 +1,76 @@
+﻿
+.tabla1 th, .tabla1 td {
+    padding: 1px !important;
+    border: 0px solid #ccc !important;
+}
+
+.treeNode {
+    color: blue;
+    font: 14px Arial, Sans-Serif;
+    border: none;
+    line-grid: unset;
+}
+
+.rootNode {
+    font-size: 18px;
+    width: 100%;
+    border: none;
+    line-grid: unset;
+    /*border-bottom:Solid 1px black;*/
+}
+
+.leafNode {
+    /*border:Dotted 2px black;*/
+    padding: 4px;
+    background-color: #eeeeee;
+    font-weight: bold;
+    border: none;
+    line-grid: unset;
+}
+
+.my-fixed-item {
+    position: fixed;
+    /*min-height: 120px;*/
+    height: 80px;
+    width: 400px;
+    text-align: center;
+    word-wrap: break-word;
+    background-color: aquamarine;
+}
+
+.file-select {
+    position: relative;
+    display: inline-block;
+    height: 40px;
+    width: 100%;
+}
+
+    .file-select::before {
+        background-color: #5678EF;
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 3px;
+        content: 'Seleccionar Archivo'; /* testo por defecto */
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+    }
+
+    .file-select input[type="file"] {
+        opacity: 0;
+        width: 400px;
+        height: 40px;
+        display: inline-block;
+        background-color: darkgreen;
+        color: white;
+    }
+
+#File1::before {
+    content: 'Seleccionar Archivo';
+}
+
+
