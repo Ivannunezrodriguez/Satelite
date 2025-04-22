@@ -1473,3 +1473,7 @@ C:\Rioeresma\Satelite\Satelite\bin\Seguridad.cs
 C:\Rioeresma\Satelite\Satelite\bin\ThumbPrint.cs
 C:\Rioeresma\Satelite\Satelite\bin\TripleDESUtil.cs
 C:\Rioeresma\Satelite\Satelite\bin\Variables.cs
+D:\Golendus\proyecto\Satelite Produccion\Satelite\obj\Debug\Satelite.csproj.AssemblyReference.cache
+D:\Golendus\proyecto\Satelite Produccion\Satelite\obj\Debug\Satelite.csproj.CoreCompileInputs.cache
+D:\Golendus\proyecto\Satelite Produccion\Satelite\obj\Debug\Satelite.dll
+D:\Golendus\proyecto\Satelite Produccion\Satelite\obj\Debug\Satelite.pdb
