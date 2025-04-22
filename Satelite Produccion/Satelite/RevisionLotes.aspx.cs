@@ -4,4812 +4,1293 @@ using System.Linq;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
-using QRCoder;
-using System.Drawing;
-using System.IO;
 using System.Data;
 using System.Data.SqlClient;
+using System.Configuration;
+using System.IO;
 using System.Globalization;
-using System.Web.UI.HtmlControls;
 
 namespace Satelite
 {
     public partial class RevisionLotes : System.Web.UI.Page
     {
-        public Boolean Esta = false;
-
-        private string SortDirection
-        {
-            get { return ViewState["SortDirection"] != null ? ViewState["SortDirection"].ToString() : "ASC"; }
-            set { ViewState["SortDirection"] = value; }
-        }
-
+        // Instancias del patrón Fluent API
+        private DatabaseConnection _dbConnection;
+        private DatabaseQueryBuilder _queryBuilder;
+        private RevisionLotesService _revisionService;
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            try
+            // Inicializar la conexión a la base de datos y los servicios
+            _dbConnection = new DatabaseConnection(ConfigurationManager.ConnectionStrings["SateliteConnection"].ConnectionString);
+            _queryBuilder = new DatabaseQueryBuilder(_dbConnection);
+            _revisionService = new RevisionLotesService(_dbConnection, _queryBuilder);
+
+            if (!IsPostBack)
             {
-                this.Session["Procesa"] = "0";
-
-
-                if (Session["Session"] == null)
+                // Verificar sesión de usuario
+                if (Session["UsuarioId"] == null)
                 {
-                    this.Session["Error"] = "0";
-                    Server.Transfer("Login.aspx"); //Default
+                    Response.Redirect("Login.aspx");
+                    return;
                 }
 
-                if (Session["Session"].ToString() == "" || Session["Session"].ToString() == "0")
+                // Cargar datos iniciales
+                CargarResponsables();
+                CargarProductos();
+                CargarEstados();
+
+                // Si hay ID en QueryString, cargar revisión existente
+                if (!string.IsNullOrEmpty(Request.QueryString["id"]))
                 {
-                    this.Session["Error"] = "0";
-                    Server.Transfer("Login.aspx"); //Default
-                }
-
-                if (!IsPostBack)
-                {
-                    this.Session["SQL"] = "";
-                    this.Session["IDSecuencia"] = "0";
-                    this.Session["IDProcedimiento"] = "0";
-                    this.Session["GridOrden"] = "";
-                    this.Session["GridEdicion"] = "0";
-                    //this.Session["DESARROLLO"] = "0";
-                    //ChkSlot.Visible = false;
-
-                    Variables.mensajeserver = "";
-                    //if (txtQRCode.Text == "")
-                    //{
-                    //    Nueva_Secuencia();
-                    //    txtQRCode.Text = "Seleccione un código de Lote";
-                    //    txtQRCodebis.Text = "Seleccione un código de Lote";
-                    //    txtQRCodebis.Visible = true;
-                    //    txtQRCode.Visible = false;
-
-                    //}
-                    //else
-                    //{
-                    //    txtQRCodebis.Visible = false;
-                    //    txtQRCode.Visible = true;
-                    //}
-                    Campos_ordenados();
-                    Nueva_Secuencia();
-                    //Carga_Lotes("");
-
-                    this.Session["IDLote"] = "0";
-                    this.Session["IDLista"] = "0";
-                    //try
-                    //{
-                    //    if (this.Session["MiNivel"].ToString() == null)
-                    //    {
-                    //        LBCheck.Visible = false;
-                    //    }
-                    //    else
-                    //    {
-                    //        if (Convert.ToInt32(this.Session["MiNivel"].ToString()) == 9)
-                    //        {
-                    //            LBCheck.Visible = true;
-                    //            bool check01 = chkOnOff.Checked;
-                    //        }
-                    //    }
-                    //}
-                    //catch
-                    //{
-                    //    LBCheck.Visible = false;
-                    //    this.Session["MiNivel"] = "0";
-                    //}
-                    //Formularios
-                    if (this.Session["Param1"].ToString() != "")
-                    {
-                        for (int i = 0; i < DrVariedad.Items.Count; i++)
-                        {
-                            string a = this.Session["Param1"].ToString();
-                            if (DrVariedad.Items[i].Text.Contains(this.Session["Param1"].ToString()))
-                            {
-                                DrVariedad.SelectedValue = DrVariedad.Items[i].Value;
-                                break;
-                            }
-                        }
-                    }
-                    //Estado
-                    if (this.Session["Param3"].ToString() != "")
-                    {
-                        for (int i = 0; i < dtEntrada.Items.Count; i++)
-                        {
-                            string a = this.Session["Param3"].ToString();
-                            if (dtEntrada.Items[i].Text.Contains(this.Session["Param3"].ToString()))
-                            {
-                                dtEntrada.SelectedValue = dtEntrada.Items[i].Value;
-                                break;
-                            }
-                        }
-                    }
-                    DrVariedad_SelectedIndexChanged(null, null);
+                    int revisionId = Convert.ToInt32(Request.QueryString["id"]);
+                    CargarRevisionExistente(revisionId);
                 }
                 else
                 {
-                    try
-                    {
-                        if (this.Session["IDSecuencia"].ToString() == null)
-                        {
-                            Server.Transfer("thEnd.aspx");
-                        }
+                    // Nueva revisión
+                    ConfigurarNuevaRevision();
+                }
 
-                        //if (txtQRCode.Text == "")
-                        //{
-                        //    txtQRCode.Text = "Seleccione un código de Lote";
-                        //    txtQRCodebis.Text = "Seleccione un código de Lote";
-                        //    txtQRCodebis.Visible = true;
-                        //    txtQRCode.Visible = false;
-                        //}
-                        //else
-                        //{
-                        //    txtQRCodebis.Visible = false;
-                        //    txtQRCode.Visible = true;
-                        //}
-                        //try
-                        //{
-                        //    if (this.Session["MiNivel"].ToString() == null)
-                        //    {
-                        //        LBCheck.Visible = false;
-                        //    }
-                        //    else
-                        //    {
-                        //        if (Convert.ToInt32(this.Session["MiNivel"].ToString()) == 9)
-                        //        {
-                        //            LBCheck.Visible = true;
-                        //            bool check01 = chkOnOff.Checked;
-                        //        }
-                        //    }
-                        //}
-                        //catch
-                        //{
-                        //    LBCheck.Visible = false;
-                        //    this.Session["MiNivel"] = "0";
-                        //}
+                // Cargar listado de revisiones
+                CargarRevisionesExistentes();
+            }
+        }
+
+        protected void CargarResponsables()
+        {
+            DataTable responsables = _revisionService.ObtenerResponsables();
+
+            ddlResponsable.DataSource = responsables;
+            ddlResponsable.DataTextField = "NombreCompleto";
+            ddlResponsable.DataValueField = "UsuarioId";
+            ddlResponsable.DataBind();
+
+            // Agregar opción por defecto
+            ddlResponsable.Items.Insert(0, new ListItem("-- Seleccione un responsable --", "0"));
+        }
+
+        protected void CargarProductos()
+        {
+            DataTable productos = _revisionService.ObtenerProductos();
+
+            ddlProducto.DataSource = productos;
+            ddlProducto.DataTextField = "NombreProducto";
+            ddlProducto.DataValueField = "ProductoId";
+            ddlProducto.DataBind();
+
+            // Agregar opción por defecto
+            ddlProducto.Items.Insert(0, new ListItem("-- Seleccione un producto --", "0"));
+        }
+
+        protected void CargarEstados()
+        {
+            // Los estados se cargan directamente en el aspx, pero podría obtenerse de la base de datos
+            // Pendiente (default), EnProceso, Aprobado, Rechazado
+        }
+
+        protected void ConfigurarNuevaRevision()
+        {
+            // Establecer valores predeterminados
+            txtFechaCreacion.Text = DateTime.Now.ToString("yyyy-MM-dd");
+            txtNumeroLote.Text = GenerarNumeroLote();
+            ddlEstado.SelectedValue = "Pendiente";
+
+            // Usuario actual como responsable predeterminado
+            int usuarioId = Convert.ToInt32(Session["UsuarioId"]);
+            if (ddlResponsable.Items.FindByValue(usuarioId.ToString()) != null)
+            {
+                ddlResponsable.SelectedValue = usuarioId.ToString();
+            }
+
+            // Deshabilitar campos según estado
+            ConfigurarCamposPorEstado("Pendiente");
+
+            // Limpiar ViewState
+            ViewState["RevisionId"] = null;
+
+            // Establecer título y texto del botón
+            lblTitulo.Text = "Nueva Revisión de Lote";
+            btnGuardar.Text = "Guardar";
+
+            // Mostrar panel de creación y ocultar panel de resultados
+            pnlDatosRevision.Visible = true;
+            pnlResultadosRevision.Visible = false;
+        }
+
+        protected void CargarRevisionExistente(int revisionId)
+        {
+            DataTable revision = _revisionService.ObtenerRevisionPorId(revisionId);
+
+            if (revision.Rows.Count > 0)
+            {
+                DataRow row = revision.Rows[0];
+
+                // Establecer valores en los controles
+                txtNumeroLote.Text = row["NumeroLote"].ToString();
+                txtFechaCreacion.Text = Convert.ToDateTime(row["FechaCreacion"]).ToString("yyyy-MM-dd");
+                ddlProducto.SelectedValue = row["ProductoId"].ToString();
+
+                if (row["ResponsableId"] != DBNull.Value)
+                {
+                    ddlResponsable.SelectedValue = row["ResponsableId"].ToString();
+                }
+
+                txtCantidad.Text = row["Cantidad"].ToString();
+                txtUnidad.Text = row["Unidad"].ToString();
+                txtLoteProveedor.Text = row["LoteProveedor"].ToString();
+                txtFechaProduccion.Text = row["FechaProduccion"] != DBNull.Value ?
+                    Convert.ToDateTime(row["FechaProduccion"]).ToString("yyyy-MM-dd") : string.Empty;
+                txtFechaCaducidad.Text = row["FechaCaducidad"] != DBNull.Value ?
+                    Convert.ToDateTime(row["FechaCaducidad"]).ToString("yyyy-MM-dd") : string.Empty;
+                txtObservaciones.Text = row["Observaciones"].ToString();
+
+                // Establecer estado
+                string estado = row["Estado"].ToString();
+                ddlEstado.SelectedValue = estado;
+
+                // Cargar resultados de revisión si aplica
+                if (estado != "Pendiente")
+                {
+                    CargarResultadosRevision(revisionId);
+                }
+
+                // Configurar campos según estado
+                ConfigurarCamposPorEstado(estado);
+
+                // Guardar ID para actualización
+                ViewState["RevisionId"] = revisionId;
+
+                // Cambiar título y texto del botón
+                lblTitulo.Text = "Editar Revisión de Lote";
+                btnGuardar.Text = "Actualizar";
+            }
+            else
+            {
+                // No se encontró la revisión, redirigir a nueva revisión
+                Response.Redirect("RevisionLotes.aspx");
+            }
+        }
+
+        protected void CargarResultadosRevision(int revisionId)
+        {
+            DataTable resultados = _revisionService.ObtenerResultadosRevision(revisionId);
+
+            if (resultados.Rows.Count > 0)
+            {
+                DataRow row = resultados.Rows[0];
+
+                // Establecer valores en los controles de resultados
+                txtFechaRevision.Text = Convert.ToDateTime(row["FechaRevision"]).ToString("yyyy-MM-dd");
+                txtResultadoVisual.Text = row["ResultadoVisual"].ToString();
+                txtResultadoOlfativo.Text = row["ResultadoOlfativo"].ToString();
+                txtResultadoGustativo.Text = row["ResultadoGustativo"].ToString();
+                txtResultadoTextura.Text = row["ResultadoTextura"].ToString();
+                txtResultadoColor.Text = row["ResultadoColor"].ToString();
+                txtOtrosResultados.Text = row["OtrosResultados"].ToString();
+                chkCumpleNorma.Checked = Convert.ToBoolean(row["CumpleNormas"]);
+                txtComentariosFinales.Text = row["ComentariosFinales"].ToString();
+
+                // Mostrar panel de resultados
+                pnlResultadosRevision.Visible = true;
+            }
+            else
+            {
+                // No hay resultados todavía
+                pnlResultadosRevision.Visible = true;
+
+                // Establecer valores predeterminados para resultados
+                txtFechaRevision.Text = DateTime.Now.ToString("yyyy-MM-dd");
+            }
+        }
+
+        protected void CargarRevisionesExistentes()
+        {
+            DataTable revisiones = _revisionService.ObtenerRevisiones();
+
+            gvRevisiones.DataSource = revisiones;
+            gvRevisiones.DataBind();
+
+            // Mostrar mensaje si no hay revisiones
+            lblSinRevisiones.Visible = (revisiones.Rows.Count == 0);
+        }
+
+        protected void ConfigurarCamposPorEstado(string estado)
+        {
+            bool esPendiente = (estado == "Pendiente");
+            bool esEnProceso = (estado == "EnProceso");
+            bool esFinalizado = (estado == "Aprobado" || estado == "Rechazado");
+
+            // Campos de la revisión
+            txtNumeroLote.Enabled = esPendiente;
+            txtFechaCreacion.Enabled = esPendiente;
+            ddlProducto.Enabled = esPendiente;
+            ddlResponsable.Enabled = esPendiente || esEnProceso;
+            txtCantidad.Enabled = esPendiente;
+            txtUnidad.Enabled = esPendiente;
+            txtLoteProveedor.Enabled = esPendiente;
+            txtFechaProduccion.Enabled = esPendiente;
+            txtFechaCaducidad.Enabled = esPendiente;
+            txtObservaciones.Enabled = esPendiente || esEnProceso;
+
+            // Campos de resultados
+            pnlResultadosRevision.Visible = esEnProceso || esFinalizado;
+            txtFechaRevision.Enabled = esEnProceso;
+            txtResultadoVisual.Enabled = esEnProceso;
+            txtResultadoOlfativo.Enabled = esEnProceso;
+            txtResultadoGustativo.Enabled = esEnProceso;
+            txtResultadoTextura.Enabled = esEnProceso;
+            txtResultadoColor.Enabled = esEnProceso;
+            txtOtrosResultados.Enabled = esEnProceso;
+            chkCumpleNorma.Enabled = esEnProceso;
+            txtComentariosFinales.Enabled = esEnProceso;
+
+            // Estado
+            ddlEstado.Enabled = !esFinalizado;
+
+            // Documentos
+            pnlDocumentos.Visible = !esPendiente;
+
+            // Botón de guardar
+            btnGuardar.Enabled = !esFinalizado;
+        }
+
+        protected string GenerarNumeroLote()
+        {
+            // Generar número de lote con formato: L-YYYYMMDD-XXX (donde XXX es un número secuencial)
+            string fechaParte = DateTime.Now.ToString("yyyyMMdd");
+
+            // Obtener el último número secuencial para la fecha actual
+            int secuencial = _revisionService.ObtenerSecuencialLote(fechaParte);
+
+            // Incrementar el secuencial
+            secuencial++;
+
+            // Formatear el número de lote
+            return $"L-{fechaParte}-{secuencial:D3}";
+        }
+
+        protected void ddlEstado_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            string estado = ddlEstado.SelectedValue;
+            ConfigurarCamposPorEstado(estado);
+        }
+
+        protected void btnGuardar_Click(object sender, EventArgs e)
+        {
+            // Validar datos requeridos
+            if (string.IsNullOrWhiteSpace(txtNumeroLote.Text) || ddlProducto.SelectedValue == "0" ||
+                string.IsNullOrWhiteSpace(txtCantidad.Text) || string.IsNullOrWhiteSpace(txtUnidad.Text))
+            {
+                MostrarMensaje("Por favor complete todos los campos requeridos.", false);
+                return;
+            }
+
+            try
+            {
+                // Obtener datos comunes
+                string numeroLote = txtNumeroLote.Text.Trim();
+                DateTime fechaCreacion = DateTime.Parse(txtFechaCreacion.Text);
+                int productoId = Convert.ToInt32(ddlProducto.SelectedValue);
+
+                int? responsableId = null;
+                if (ddlResponsable.SelectedValue != "0")
+                {
+                    responsableId = Convert.ToInt32(ddlResponsable.SelectedValue);
+                }
+
+                decimal cantidad = Convert.ToDecimal(txtCantidad.Text, CultureInfo.InvariantCulture);
+                string unidad = txtUnidad.Text.Trim();
+                string loteProveedor = txtLoteProveedor.Text.Trim();
+
+                DateTime? fechaProduccion = null;
+                if (!string.IsNullOrWhiteSpace(txtFechaProduccion.Text))
+                {
+                    fechaProduccion = DateTime.Parse(txtFechaProduccion.Text);
+                }
+
+                DateTime? fechaCaducidad = null;
+                if (!string.IsNullOrWhiteSpace(txtFechaCaducidad.Text))
+                {
+                    fechaCaducidad = DateTime.Parse(txtFechaCaducidad.Text);
+                }
+
+                string observaciones = txtObservaciones.Text.Trim();
+                string estado = ddlEstado.SelectedValue;
+
+                int usuarioId = Convert.ToInt32(Session["UsuarioId"]);
+
+                // Datos de resultados (si aplica)
+                DateTime? fechaRevision = null;
+                string resultadoVisual = null;
+                string resultadoOlfativo = null;
+                string resultadoGustativo = null;
+                string resultadoTextura = null;
+                string resultadoColor = null;
+                string otrosResultados = null;
+                bool cumpleNormas = false;
+                string comentariosFinales = null;
+
+                if (estado != "Pendiente")
+                {
+                    if (!string.IsNullOrWhiteSpace(txtFechaRevision.Text))
+                    {
+                        fechaRevision = DateTime.Parse(txtFechaRevision.Text);
                     }
-                    catch (NullReferenceException ex)
-                    {
-                        Lberror.Text += ex.Message;
 
-                        if (Session["Session"] == null)
+                    resultadoVisual = txtResultadoVisual.Text.Trim();
+                    resultadoOlfativo = txtResultadoOlfativo.Text.Trim();
+                    resultadoGustativo = txtResultadoGustativo.Text.Trim();
+                    resultadoTextura = txtResultadoTextura.Text.Trim();
+                    resultadoColor = txtResultadoColor.Text.Trim();
+                    otrosResultados = txtOtrosResultados.Text.Trim();
+                    cumpleNormas = chkCumpleNorma.Checked;
+                    comentariosFinales = txtComentariosFinales.Text.Trim();
+
+                    // Validar resultados si el estado es finalizado
+                    if (estado == "Aprobado" || estado == "Rechazado")
+                    {
+                        if (!fechaRevision.HasValue || string.IsNullOrWhiteSpace(resultadoVisual) ||
+                            string.IsNullOrWhiteSpace(resultadoOlfativo) || string.IsNullOrWhiteSpace(resultadoGustativo) ||
+                            string.IsNullOrWhiteSpace(comentariosFinales))
                         {
-                            Server.Transfer("Login.aspx");
+                            MostrarMensaje("Para finalizar la revisión debe completar todos los resultados.", false);
+                            return;
                         }
-                        else if (this.Session["Error"].ToString() == "0")
+                    }
+                }
+
+                int revisionId;
+
+                if (ViewState["RevisionId"] != null)
+                {
+                    // Actualizar revisión existente
+                    revisionId = Convert.ToInt32(ViewState["RevisionId"]);
+
+                    _revisionService.ActualizarRevision(
+                        revisionId,
+                        numeroLote,
+                        fechaCreacion,
+                        productoId,
+                        responsableId,
+                        cantidad,
+                        unidad,
+                        loteProveedor,
+                        fechaProduccion,
+                        fechaCaducidad,
+                        observaciones,
+                        estado,
+                        usuarioId);
+
+                    // Si hay resultados, actualizarlos o crearlos
+                    if (estado != "Pendiente")
+                    {
+                        if (_revisionService.ExistenResultadosRevision(revisionId))
                         {
-                            Server.Transfer("Login.aspx");
+                            _revisionService.ActualizarResultadosRevision(
+                                revisionId,
+                                fechaRevision,
+                                resultadoVisual,
+                                resultadoOlfativo,
+                                resultadoGustativo,
+                                resultadoTextura,
+                                resultadoColor,
+                                otrosResultados,
+                                cumpleNormas,
+                                comentariosFinales,
+                                usuarioId);
                         }
                         else
                         {
-                            Server.Transfer("thEnd.aspx");
+                            _revisionService.CrearResultadosRevision(
+                                revisionId,
+                                fechaRevision,
+                                resultadoVisual,
+                                resultadoOlfativo,
+                                resultadoGustativo,
+                                resultadoTextura,
+                                resultadoColor,
+                                otrosResultados,
+                                cumpleNormas,
+                                comentariosFinales,
+                                usuarioId);
                         }
                     }
-                }
 
-            }
-            catch (Exception ex)
-            {
-                string b = ex.Message;
-                if (this.Session["Error"].ToString() == "0")
-                {
-                    Server.Transfer("Login.aspx");
+                    MostrarMensaje("Revisión actualizada exitosamente.", true);
                 }
                 else
                 {
-                    Server.Transfer("thEnd.aspx");
-                }
-            }
-        }
+                    // Crear nueva revisión
+                    revisionId = _revisionService.CrearRevision(
+                        numeroLote,
+                        fechaCreacion,
+                        productoId,
+                        responsableId,
+                        cantidad,
+                        unidad,
+                        loteProveedor,
+                        fechaProduccion,
+                        fechaCaducidad,
+                        observaciones,
+                        estado,
+                        usuarioId);
 
-        protected void BtLinkNomina_Click(object sender, EventArgs e)
-        {
-            Server.Transfer("RecoNomina.aspx");
-        }
+                    // Si hay resultados, crearlos
+                    if (estado != "Pendiente")
+                    {
+                        _revisionService.CrearResultadosRevision(
+                            revisionId,
+                            fechaRevision,
+                            resultadoVisual,
+                            resultadoOlfativo,
+                            resultadoGustativo,
+                            resultadoTextura,
+                            resultadoColor,
+                            otrosResultados,
+                            cumpleNormas,
+                            comentariosFinales,
+                            usuarioId);
+                    }
 
-        protected void checkListas_Click(object sender, EventArgs e)
-        {
-            //if (chkOnOff.Checked == false)
-            //{
-            //    //DrTransportista.Visible = false;
-            //    BTerminado.Visible = false;
-            //}
-            //else
-            //{
-            //    if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
-            //    {
-            //        BTerminado.Visible = false;
-            //    }
-            //    else
-            //    {
-            //        BTerminado.Visible = true;
-            //    }
-            //}
-            //Carga_Lotes();
-        }
+                    MostrarMensaje("Revisión creada exitosamente.", true);
 
-        protected void BtMenus_Click(object sender, EventArgs e)
-        {
-            //if (divMenu.Visible == true)
-            //{
-            //    divMenu.Visible = false;
-            //    HtmlGenericControl li = (HtmlGenericControl)FindControl("pagevistaform");
-            //    li.Attributes.CssStyle.Add("margin", "0");
-            //    MasMinMenu.Attributes["class"] = "fa fa-chevron-right fa-2x";
-            //}
-            //else
-            //{
-            //    divMenu.Visible = true;
-            //    HtmlGenericControl li = (HtmlGenericControl)FindControl("pagevistaform");
-            //    li.Attributes.CssStyle.Add("margin", "0 0 0 250px");
-            //    MasMinMenu.Attributes["class"] = "fa fa-chevron-left fa-2x";
-            //}
-            //Carga_Lotes();
-        }
-
-        protected void checkOk_Click(object sender, EventArgs e)
-        {
-            windowmessaje.Visible = false;
-            cuestion.Visible = false;
-            Asume.Visible = false;
-            Carga_Lotes();
-            MiOpenMenu();
-        }
-        protected void checkSi_Click(object sender, EventArgs e)
-        {
-            windowmessaje.Visible = false;
-            cuestion.Visible = false;
-            Asume.Visible = false;
-            BTElimina_Click(sender, e);
-            MiOpenMenu();
-
-        }
-        protected void checkNo_Click(object sender, EventArgs e)
-        {
-            windowmessaje.Visible = false;
-            cuestion.Visible = false;
-            Asume.Visible = false;
-            MiOpenMenu();
-        }
-
-
-        private void Campos_ordenados()
-        {
-            ddEntradaPageSize.Items.Clear();
-            ddEntradaPageSize.Items.Insert(0, new ListItem("10", "10"));
-            ddEntradaPageSize.Items.Insert(1, new ListItem("30", "30"));
-            ddEntradaPageSize.Items.Insert(2, new ListItem("50", "50"));
-            ddEntradaPageSize.Items.Insert(3, new ListItem("Todos", "1000"));
-
-            dtEntrada.Items.Clear();
-            dtEntrada.Items.Insert(0, new ListItem("Entradas", "1"));
-            dtEntrada.Items.Insert(1, new ListItem("Finalizados", "2"));
-            dtEntrada.Items.Insert(2, new ListItem("Importados", "3"));
-            dtEntrada.Items.Insert(3, new ListItem("Eliminados", "4"));
-        }
-
-        protected void dtEntrada_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
-            {
-                BTerminado.Visible = false;
-                BtFinalizaTodos.Visible = false;
-                BtEnviaFinalizados.Visible = false;
-                Btfin.Visible = true;
-                //return; 
-            }
-
-            if (dtEntrada.SelectedItem.Value == "1")
-            {
-                BTerminado.Visible = false;
-                BtFinalizaTodos.Visible = true;
-                BtEnviaFinalizados.Visible = false;
-                Btfin.Visible = true;
-
-            }
-            else if (dtEntrada.SelectedItem.Value == "2")
-            {
-                BTerminado.Visible = true;
-                BtFinalizaTodos.Visible = false;
-                BtEnviaFinalizados.Visible = true;
-                Btfin.Visible = true;
-            }
-            else if (dtEntrada.SelectedItem.Value == "3")
-            {
-                BTerminado.Visible = true;
-                BtFinalizaTodos.Visible = false;
-                BtEnviaFinalizados.Visible = false;
-                Btfin.Visible = true;
-            }
-            else if (dtEntrada.SelectedItem.Value == "4")
-            {
-                BTerminado.Visible = true;
-                BtFinalizaTodos.Visible = false;
-                BtEnviaFinalizados.Visible = false;
-                Btfin.Visible = false;
-            }
-            Carga_Lotes();
-        }
-
-        private void Nueva_Secuencia()
-        {
-            //DataTable dt3 = Main.CargaSecuencia().Tables[0];
-            DataTable dt3 = Main.CargaSCANform().Tables[0];
-            this.Session["Secuencias"] = dt3;
-            DrVariedad.Items.Clear();
-
-            DrVariedad.AppendDataBoundItems = true;
-            //DrVariedad.Items.Add("Seleccione un tipo de lote...");
-            //DrVariedad.DataValueField = "ZID";
-            //DrVariedad.DataTextField = "ZDESCRIPCION";
-            DrVariedad.Items.Add("Todos los Formularios");
-            DrVariedad.DataValueField = "ZID";
-            DrVariedad.DataTextField = "ZDESCRIPCION";
-
-            this.Session["IDProcedimiento"] = "0";
-
-            DrVariedad.DataSource = dt3;
-            DrVariedad.DataBind();
-
-            foreach (DataRow fila in dt3.Rows)
-            {
-                string miro = fila["ZDESCRIPCION"].ToString();
-                if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
-                {
-                    this.Session["IDSecuencia"] = "1,2,3,4,5,6";
-                    break;
-                }
-                if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-                {
-                    this.Session["IDSecuencia"] = fila["ZID_SECUENCIA"].ToString();
-                    this.Session["IDProcedimiento"] = fila["ZID_PROCEDIMIENTO"].ToString();
-                    //this.Session["LaMascara"] = fila["ZMASCARA"].ToString();
-                    //GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
-                    break;
-                }
-            }
-            Carga_Lotes();
-            //Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
-            //DrVariedad.Text = "";
-
-        }
-
-
-        private void Carga_Lotes2(string ID)
-        {
-            //Prueba con gold
-            string SQL = "SELECT * FROM IMPORTACION ";
-            DataTable dbA = Main.BuscaLoteGold(SQL).Tables[0];
-            //DrScaneados.Items.Clear();
-            //DrScaneados.DataValueField = "SERIE_LOTE";
-            //DrScaneados.DataTextField = "ARTICULO";
-            //// insertamos el elemento en la primera posicion:
-            //DrScaneados.Items.Insert(0, new ListItem("Seleccionar Lote", ""));
-            //DrScaneados.DataSource = dbA;
-            //DrScaneados.DataBind();
-            //DrScaneados.SelectedIndex = -1;
-            return;
-            //
-        }
-
-
-        private void Carga_Lotes3(string ID)
-        {
-            //Prueba con gold
-            string SQL = "SELECT * FROM IMPORTACION ";
-            DataTable dbA = Main.BuscaLoteReco(SQL).Tables[0];
-            //DrScaneados.Items.Clear();
-            //DrScaneados.DataValueField = "SERIE_LOTE";
-            //DrScaneados.DataTextField = "ARTICULO";
-            //// insertamos el elemento en la primera posicion:
-            //DrScaneados.Items.Insert(0, new ListItem("Seleccionar Lote", ""));
-            //DrScaneados.DataSource = dbA;
-            //DrScaneados.DataBind();
-            //DrScaneados.SelectedIndex = -1;
-            return;
-            //
-        }
-
-        private void Carga_Impresoras(string ID)
-        {
-            try
-            {
-                string SQL = "";
-                if (ID == "0")
-                {
-                    SQL = " SELECT DISTINCT(C.ZID) as IDPRINT, C.ZDESCRIPCION ";
-                    SQL += " FROM ZFORMULARIOS A ";
-                    SQL += " INNER JOIN ZPRINTERFORM B ON A.ZID = B.ZID_FORMULARIO ";
-                    SQL += " INNER JOIN ZPRINTER C ON B.ZID_PRINTER = C.ZID ";
-                }
-                else
-                {
-                    SQL = " SELECT DISTINCT(C.ZID) as IDPRINT, C.ZDESCRIPCION ,B.ZORDEN ";
-                    SQL += " FROM ZFORMULARIOS A ";
-                    SQL += " INNER JOIN ZPRINTERFORM B ON A.ZID = B.ZID_FORMULARIO ";
-                    SQL += " INNER JOIN ZPRINTER C ON B.ZID_PRINTER = C.ZID ";
-                    SQL += " WHERE A.ZID = '" + ID + "'";
-                    SQL += " ORDER BY B.ZORDEN ";
-                    //SQL = " SELECT DISTINCT(C.ZID) as IDPRINT, C.ZDESCRIPCION ";
-                    //SQL += " FROM ZFORMULARIOS A ";
-                    //SQL += " INNER JOIN ZPRINTERFORM B ON A.ZID = B.ZID_FORMULARIO ";
-                    //SQL += " INNER JOIN ZPRINTER C ON B.ZID_PRINTER = C.ZID ";
-                    //SQL += " WHERE A.ZID = '" + ID + "'";
+                    // Redirigir a edición de la revisión creada
+                    Response.Redirect($"RevisionLotes.aspx?id={revisionId}");
                 }
 
-                DataTable dbB = Main.BuscaLote(SQL).Tables[0];
-                //DrPrinters.Items.Clear();
-                //DrPrinters.DataValueField = "IDPRINT";
-                //DrPrinters.DataTextField = "ZDESCRIPCION";
-                //DrPrinters.DataSource = dbB;
-                //DrPrinters.DataBind();
-                //Printers(DrPrinters.SelectedItem.Value);
+                // Recargar listado de revisiones
+                CargarRevisionesExistentes();
             }
             catch (Exception ex)
             {
-                string b = ex.Message;
-                Server.Transfer("thEnd.aspx");
+                MostrarMensaje("Error al guardar la revisión: " + ex.Message, false);
             }
         }
 
-        private void Elimina_Procesados()
+        protected void btnNueva_Click(object sender, EventArgs e)
         {
-            ////Cambia de tabla solo aquellos que se ajusten al formulario con estado a 2
-            ////Queda a 2 la ultima inserción para poder revertir la importacion
-            //try
-            //{
-            //    string SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.ESTADO ";
-            //    SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-            //    SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-            //    SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-            //    SQL += " AND A.ESTADO = 2 ";
-            //    DataTable dbB = Main.BuscaLote(SQL).Tables[0];
-
-            //    foreach (DataRow fila in dbB.Rows)
-            //    {
-            //        SQL = " INSERT INTO ZENTRADA_BORRADOS (ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
-            //        SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA) ";
-            //        SQL += " SELECT ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
-            //        SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA ";
-            //        SQL += " FROM ZENTRADA WHERE ID = " + fila["ID"].ToString();
-
-            //        DBHelper.ExecuteNonQuery(SQL);
-
-            //        SQL = " DELETE FROM ZENTRADA WHERE ID = " + fila["ID"].ToString();
-
-            //        DBHelper.ExecuteNonQuery(SQL);
-            //    }
-            //}
-            //catch(Exception ex)
-            //{
-            //    TextAlerta.Text = ex.Message;
-            //    alerta.Visible = true;
-            //}
-
+            // Redirigir a nueva revisión
+            Response.Redirect("RevisionLotes.aspx");
         }
 
-        private void Elimina_Borrados()
+        protected void gvRevisiones_RowCommand(object sender, GridViewCommandEventArgs e)
         {
-            ////Cambia de tabla solo aquellos que se ajusten al formulario con estado a 2
-            ////Queda a 2 la ultima inserción para poder revertir la importacion
+            if (e.CommandName == "EditarRevision")
+            {
+                int revisionId = Convert.ToInt32(e.CommandArgument);
+                Response.Redirect($"RevisionLotes.aspx?id={revisionId}");
+            }
+            else if (e.CommandName == "ImprimirRevision")
+            {
+                int revisionId = Convert.ToInt32(e.CommandArgument);
+                // Implementar la lógica para generar e imprimir la revisión
+                Response.Redirect($"ImprimirRevision.aspx?id={revisionId}");
+            }
+            else if (e.CommandName == "EliminarRevision")
+            {
+                try
+                {
+                    int revisionId = Convert.ToInt32(e.CommandArgument);
+                    int usuarioId = Convert.ToInt32(Session["UsuarioId"]);
+
+                    // Verificar que la revisión esté en estado pendiente
+                    string estado = _revisionService.ObtenerEstadoRevision(revisionId);
+                    if (estado != "Pendiente")
+                    {
+                        MostrarMensaje("Solo se pueden eliminar revisiones en estado Pendiente.", false);
+                        return;
+                    }
+
+                    // Eliminar la revisión
+                    _revisionService.EliminarRevision(revisionId, usuarioId);
+
+                    MostrarMensaje("Revisión eliminada exitosamente.", true);
+
+                    // Recargar listado de revisiones
+                    CargarRevisionesExistentes();
+                }
+                catch (Exception ex)
+                {
+                    MostrarMensaje("Error al eliminar la revisión: " + ex.Message, false);
+                }
+            }
+        }
+
+        protected void btnSubirDocumento_Click(object sender, EventArgs e)
+        {
+            // Verificar que haya un archivo seleccionado
+            if (!fileUpload.HasFile)
+            {
+                MostrarMensaje("Por favor seleccione un archivo para subir.", false);
+                return;
+            }
+
+            // Verificar que exista ID de revisión
+            if (ViewState["RevisionId"] == null)
+            {
+                MostrarMensaje("Debe guardar la revisión antes de subir documentos.", false);
+                return;
+            }
+
             try
             {
-                string SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.ESTADO ";
-                SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-                SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                //SQL += " AND A.ID = " + TxtID.Text;
-                DataTable dbB = Main.BuscaLote(SQL).Tables[0];
+                // Obtener datos del archivo
+                string fileName = Path.GetFileName(fileUpload.FileName);
+                string fileExtension = Path.GetExtension(fileName).ToLower();
 
-                foreach (DataRow fila in dbB.Rows)
+                // Validar la extensión del archivo
+                string[] extensionesPermitidas = { ".pdf", ".doc", ".docx", ".jpg", ".png", ".xls", ".xlsx" };
+                if (!extensionesPermitidas.Contains(fileExtension))
                 {
-                    SQL = " INSERT INTO ZENTRADA_BORRADOS (ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
-                    SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA) ";
-                    SQL += " SELECT ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
-                    SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA ";
-                    SQL += " FROM ZENTRADA WHERE ID = " + fila["ID"].ToString();
-
-                    DBHelper.ExecuteNonQuery(SQL);
-
-                    SQL = " DELETE FROM ZENTRADA WHERE ID = " + fila["ID"].ToString();
-
-                    DBHelper.ExecuteNonQuery(SQL);
+                    MostrarMensaje("Tipo de archivo no permitido. Use formatos comunes (PDF, Word, Excel, imágenes).", false);
+                    return;
                 }
+
+                // Generar nombre único para el archivo
+                string nuevoNombre = $"revision_{ViewState["RevisionId"]}_{Guid.NewGuid()}{fileExtension}";
+
+                // Ruta donde se guardará el archivo
+                string rutaArchivos = Server.MapPath("~/Archivos/RevisionLotes/");
+
+                // Verificar si existe el directorio y si no, crearlo
+                if (!Directory.Exists(rutaArchivos))
+                {
+                    Directory.CreateDirectory(rutaArchivos);
+                }
+
+                // Guardar el archivo físicamente
+                string rutaCompleta = Path.Combine(rutaArchivos, nuevoNombre);
+                fileUpload.SaveAs(rutaCompleta);
+
+                // Registrar el documento en la base de datos
+                int revisionId = Convert.ToInt32(ViewState["RevisionId"]);
+                string tipoDocumento = ddlTipoDocumento.SelectedValue;
+                string descripcion = txtDescripcionDoc.Text.Trim();
+                int usuarioId = Convert.ToInt32(Session["UsuarioId"]);
+
+                _revisionService.AgregarDocumentoRevision(
+                    revisionId,
+                    tipoDocumento,
+                    descripcion,
+                    fileName,
+                    nuevoNombre,
+                    rutaCompleta,
+                    usuarioId);
+
+                MostrarMensaje("Documento subido exitosamente.", true);
+
+                // Limpiar controles
+                ddlTipoDocumento.SelectedIndex = 0;
+                txtDescripcionDoc.Text = string.Empty;
+
+                // Recargar documentos
+                CargarDocumentosRevision(revisionId);
             }
             catch (Exception ex)
             {
-                //TextAlerta.Text = ex.Message;
-                //alerta.Visible = true;
-                Lbmensaje.Text = ex.Message;
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
+                MostrarMensaje("Error al subir el documento: " + ex.Message, false);
             }
-
         }
 
-
-        protected void gvEntrada_PageSize_Changed(object sender, EventArgs e)
+        protected void CargarDocumentosRevision(int revisionId)
         {
-            if (ddEntradaPageSize.SelectedItem.Value == "1000")
+            DataTable documentos = _revisionService.ObtenerDocumentosRevision(revisionId);
+
+            gvDocumentos.DataSource = documentos;
+            gvDocumentos.DataBind();
+
+            // Mostrar mensaje si no hay documentos
+            lblSinDocumentos.Visible = (documentos.Rows.Count == 0);
+        }
+
+        protected void gvDocumentos_RowCommand(object sender, GridViewCommandEventArgs e)
+        {
+            if (e.CommandName == "DescargarDocumento")
             {
-                gvEntrada.AllowPaging = false;
-                Carga_Lotes();
+                try
+                {
+                    int documentoId = Convert.ToInt32(e.CommandArgument);
+                    DescargarDocumento(documentoId);
+                }
+                catch (Exception ex)
+                {
+                    MostrarMensaje("Error al descargar el documento: " + ex.Message, false);
+                }
             }
-            else
+            else if (e.CommandName == "EliminarDocumento")
             {
-                gvEntrada.AllowPaging = true;
-                gvEntrada.PageSize = Convert.ToInt32(ddEntradaPageSize.SelectedItem.Value);
-                Carga_Lotes();
+                try
+                {
+                    int documentoId = Convert.ToInt32(e.CommandArgument);
+                    int revisionId = Convert.ToInt32(ViewState["RevisionId"]);
+                    int usuarioId = Convert.ToInt32(Session["UsuarioId"]);
+
+                    _revisionService.EliminarDocumentoRevision(documentoId, usuarioId);
+
+                    MostrarMensaje("Documento eliminado exitosamente.", true);
+
+                    // Recargar documentos
+                    CargarDocumentosRevision(revisionId);
+                }
+                catch (Exception ex)
+                {
+                    MostrarMensaje("Error al eliminar el documento: " + ex.Message, false);
+                }
             }
-
         }
 
-        protected void gvEntrada_OnSorting(object sender, GridViewSortEventArgs e)
+        private void DescargarDocumento(int documentoId)
         {
-            this.Session["GridOrden"] = e.SortExpression;
-            Carga_Lotes(this.Session["GridOrden"].ToString());
-        }
-
-        protected void gvEntrada_OnRowDataBound(object sender, GridViewRowEventArgs e)
-        {
-
-            if (e.Row.RowType == DataControlRowType.DataRow)
-            {
-                DataRowView drv = e.Row.DataItem as DataRowView;
-                string miro = drv["ESTADO"].ToString();
-
-                //if (e.Row.RowIndex == 0)
-                //    e.Row.Style.Add("height", "50px");
-
-                if (dtEntrada.SelectedItem.Value == "4")
-                {
-                    e.Row.BackColor = Color.FromName("#ff7e62");
-                }
-                else if (drv["ESTADO"].ToString() == "2")
-                {
-                    //e.Row.BackColor = Color.FromArgb(228, 237, 128);
-                    e.Row.BackColor = Color.FromName("#c7e2f2");
-                }
-                else if (drv["ESTADO"].ToString() == "1")
-                {
-                    //e.Row.BackColor = Color.FromArgb(228, 237, 128);
-                    e.Row.BackColor = Color.FromName("#ffcf62");
-                }
-                else if (drv["ESTADO"].ToString() == "0")
-                {
-                    //e.Row.BackColor = Color.FromArgb(228, 237, 128);
-                    e.Row.BackColor = Color.FromName("#fcf5d2");
-                }
-                else if ((e.Row.DataItemIndex % 2) == 0)
-                {
-                    //Par
-                    e.Row.BackColor = Color.FromName("#fff");
-                }
-                else
-                {
-                    //Impar
-                    e.Row.BackColor = Color.FromName("#f5f5f5");
-                }
-
-
-
-                //e.Row.TableSection = TableRowSection.TableBody;
-            }
-            //else if (e.Row.RowType == DataControlRowType.Footer)
-            //{
-            //    //e.Row.TableSection = TableRowSection.TableFooter;
-            //    e.Row.BackColor = Color.FromName("#f5f5f5");
-            //}
-            //else if (e.Row.RowType == DataControlRowType.Header)
-            //{
-            //    //e.Row.TableSection = TableRowSection.TableHeader;
-            //    e.Row.BackColor = Color.FromName("#f5f5f5");
-            //}
-            //else if (e.Row.RowType == DataControlRowType.Footer)
-            //{
-            //    e.Row.TableSection = TableRowSection.TableFooter;
-            //}
-        }
-
-        protected void gvEntrada_RowDeleting(object sender, GridViewDeleteEventArgs e)
-        {
-
-            GridViewRow row = (GridViewRow)gvEntrada.Rows[e.RowIndex];
-
-            string miro = gvEntrada.DataKeys[e.RowIndex].Value.ToString();
-            string SQL = "UPDATE ZCARGA_LINEA set ESTADO = 2 ";
-            SQL += " WHERE ID = " + miro;
-
-            DBHelper.ExecuteNonQuery(SQL);
-            Carga_Lotes();
-
-            gvEntrada.EditIndex = -1;
-
-            gvEntrada.DataBind();
-            //ScriptManager.RegisterStartupScript(Page, this.GetType(), "Key", "<script>MakeStaticHeader('" + gvEntrada.ClientID + "', 600, 1100 , 40 ,true); </script>", false);
-        }
-
-        protected void gvEntrada_PageIndexChanging(Object sender, GridViewPageEventArgs e)
-        {
-            gvEntrada.PageIndex = e.NewPageIndex;
-            Carga_Lotes();
-        }
-
-        protected void gvEntrada_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
-        {
-            //if (this.Session["EstadoCabecera"].ToString() == "3") { return; }
-            GridViewRow row = gvEntrada.Rows[e.RowIndex];
-            string miro = gvEntrada.DataKeys[e.RowIndex].Value.ToString();
-
-            string a = this.Session["GridOrden"].ToString();
-            Carga_Lotes(this.Session["GridOrden"].ToString());
-            gvEntrada.EditIndex = -1;
-            gvEntrada.DataBind();
-            this.Session["GridEdicion"] = "0";
-            //ScriptManager.RegisterStartupScript(Page, this.GetType(), "Key", "<script>MakeStaticHeader('" + gvEntrada.ClientID + "', 600, 1100 , 40 ,true); </script>", false);
-
-            ////sube la linea a la orden
-            //string Numero = "";
-            //decimal UNIDADES = 1.0M;
-            ////string SQL = "DELETE FROM ZCARGA_LINEA WHERE ID = " + this.Session["IDGridB"].ToString();
-
-            //TextBox txtBox = (TextBox)(row.Cells[10].Controls[0]);
-            //if (txtBox != null)
-            //{
-            //    UNIDADES = Convert.ToDecimal(txtBox.Text);
-            //}
-            //txtBox = (TextBox)(row.Cells[13].Controls[0]);
-            //if (txtBox != null)
-            //{
-            //    Numero = txtBox.Text;
-            //}
-            ////DBHelper.ExecuteNonQuery(SQL);
-
-            //string SQL = "UPDATE ZCARGA_ORDEN SET (UNIDADESENCARGA = UNIDADESENCARGA + UNIDADES) WHERE ID_CABECERA = " + miro;
-            //DBHelper.ExecuteNonQuery(SQL);
-
-            //SQL = "DELETE FROM ZCARGA_LINEA WHERE ID_SECUENCIA = " + miro + " AND NUMERO_LINEA = " + Numero;
-
-            //Carga_tabla();
-            //Carga_tablaLista();
-
-            //gvLista.EditIndex = -1;
-
-            //gvLista.DataBind();
-        }
-
-        protected void gvEntrada_RowCommand(object sender, System.Web.UI.WebControls.GridViewCommandEventArgs e)
-        {
-            int index = 0;
-            //if (this.Session["EstadoCabecera"].ToString() == "3") { return; }
             try
             {
-                if (e.CommandName == "SubeCarga")
+                // Obtener información del documento
+                DataTable documentoInfo = _revisionService.ObtenerDocumentoPorId(documentoId);
+
+                if (documentoInfo.Rows.Count > 0)
                 {
-                    decimal UNIDADES = 1.0M;
-                    //string Cabecera = TxtNumero.Text;
+                    DataRow row = documentoInfo.Rows[0];
+                    string nombreOriginal = row["NombreOriginal"].ToString();
+                    string rutaArchivo = row["RutaArchivo"].ToString();
 
-                    index = Convert.ToInt32(e.CommandArgument);
-                    GridViewRow row = gvEntrada.Rows[index];
-                    string miro = gvEntrada.DataKeys[index].Value.ToString();
-                    row.BackColor = Color.FromName("#ffead1");
-
-                    //sube la linea a la orden
-                    string Numero = "";
-
-                    Label txtBox = (gvEntrada.Rows[index].Cells[8].FindControl("LabLCarga") as Label);
-                    //TextBox txtBox = (TextBox)(row.Cells[12].Controls[0]);
-                    if (txtBox != null)
+                    // Verificar que el archivo exista
+                    if (File.Exists(rutaArchivo))
                     {
-                        UNIDADES = Convert.ToDecimal(txtBox.Text.Replace(".", ","));
-                    }
-                    txtBox = (gvEntrada.Rows[index].Cells[4].FindControl("LabLNumLinea") as Label);
-                    //TextBox txtBox = (TextBox)(row.Cells[12].Controls[0]);
-                    if (txtBox != null)
-                    {
-                        Numero = txtBox.Text;
-                    }
+                        // Determinar el tipo de contenido según la extensión
+                        string extension = Path.GetExtension(rutaArchivo).ToLower();
+                        string contentType = "application/octet-stream";
 
-                    //string Mira = Server.HtmlDecode(row.Cells[8].Text);
-                    //if (Mira != "")
-                    //{
-                    //    UNIDADES = Convert.ToDecimal(Mira.Replace(".", ","));
-                    //}
+                        if (extension == ".pdf")
+                            contentType = "application/pdf";
+                        else if (extension == ".doc" || extension == ".docx")
+                            contentType = "application/msword";
+                        else if (extension == ".xls" || extension == ".xlsx")
+                            contentType = "application/vnd.ms-excel";
+                        else if (extension == ".jpg" || extension == ".jpeg")
+                            contentType = "image/jpeg";
+                        else if (extension == ".png")
+                            contentType = "image/png";
 
-                    //Mira = Server.HtmlDecode(row.Cells[4].Text);
-                    //if (Mira != "")
-                    //{
-                    //    Numero = Mira;
-                    //}
-
-                    string SQL = "UPDATE ZCARGA_ORDEN SET UDSENCARGA = CONVERT(VARCHAR, (CONVERT(DECIMAL(18, 6), UDSENCARGA) - " + UNIDADES.ToString().Replace(",", ".") + ")), ";
-                    SQL += " UDSPENDIENTES = CONVERT(VARCHAR, (CONVERT(DECIMAL(18, 6), UDSPENDIENTES) + " + UNIDADES.ToString().Replace(",", ".") + ")), ";
-                    SQL += " UDSACARGAR = CONVERT(VARCHAR, (CONVERT(DECIMAL(18, 6), UDSPENDIENTES) + " + UNIDADES.ToString().Replace(",", ".") + ")),  ";
-                    SQL += " NUMPALET = 0.00 ";
-                    SQL += " WHERE ID = " + miro;
-                    DBHelper.ExecuteNonQuery(SQL);
-
-                    SQL = "DELETE FROM ZCARGA_LINEA WHERE ID = " + miro + " AND NUMERO_LINEA = " + Numero;
-
-                    DBHelper.ExecuteNonQuery(SQL);
-
-                    //Carga_tabla();
-                    //Carga_tablaLista();
-
-                    gvEntrada.EditIndex = -1;
-
-                    gvEntrada.DataBind();
-                    //ScriptManager.RegisterStartupScript(Page, this.GetType(), "Key", "<script>MakeStaticHeader('" + gvEntrada.ClientID + "', 600, 1100 , 40 ,true); </script>", false);
-
-
-                }
-
-                if (e.CommandName == "CargaCamion")
-                {
-                    index = Convert.ToInt32(e.CommandArgument);
-                    GridViewRow row = gvEntrada.Rows[index];
-                    string miro = gvEntrada.DataKeys[index].Value.ToString();
-                    row.BackColor = Color.FromName("#ffead1");
-                    string Numero = "";
-
-                    //string Mira = Server.HtmlDecode(row.Cells[4].Text);
-                    //if (Mira != "")
-                    //{
-                    //    Numero = Mira;
-                    //}
-                    Label txtBox = (gvEntrada.Rows[index].Cells[10].FindControl("LabLNumLinea") as Label);
-                    if (txtBox != null)
-                    {
-                        Numero = txtBox.Text;
-                    }
-
-                    string SQL = " SELECT ID, EMPRESA, CLIENTEPROVEEDOR, NOMBREFISCAL, RUTA, NUMERO, LINEA, ARTICULO, ";
-                    SQL += "UDSENCARGA, NUMPALET, POSICIONCAMION, OBSERVACIONES, FECHAENTREGA, COMPUTER, ESTADO, NUMERO_LINEA, ID_CABECERA FROM  ZCARGA_LINEA ";
-                    SQL += " WHERE ID_CABECERA = " + index;
-                    SQL += " AND NUMERO_LINEA = " + Numero;
-                    Lberror.Text += SQL + "1- gvlista_rowcomand " + Variables.mensajeserver;
-                    DataTable dt = Main.BuscaLote(SQL).Tables[0];
-                    Lberror.Text += " 2- gvlista_rowcomand  " + Variables.mensajeserver;
-
-
-                    //string SQL = "UPDATE ZCARGA_LINEA set ESTADO = 2 ";
-                    //SQL += " WHERE NUMERO_LINEA = " + Numero; //Miro con ID lo hace con todos
-
-                    //DBHelper.ExecuteNonQuery(SQL);
-                    //Carga_tablaLista();
-
-                    //gvLista.EditIndex = -1;
-
-                    //gvLista.DataBind();
-                }
-
-                if (e.CommandName == "Edit" || e.CommandName == "Update")
-                {
-                    index = int.Parse(e.CommandArgument.ToString());
-                    this.Session["IDGridB"] = gvEntrada.DataKeys[index].Value.ToString();
-                    this.Session["GridEdicion"] = "1";
-                    //gvControl.EditIndex = -1;
-                    //gvControl.DataBind();
-                }
-            }
-            catch (Exception ex)
-            {
-                Lberror.Text = "Lista RowCommand = index: " + index + "; Grid: " + this.Session["IDGridA"].ToString() + "Key: " + gvEntrada.DataKeys[index].Value.ToString() + " " + ex.Message;
-                Lberror.Visible = true;
-            }
-        }
-
-        protected void gvEntrada_RowEditing(object sender, GridViewEditEventArgs e)
-        {
-            //if (this.Session["EstadoCabecera"].ToString() == "3") { return; }
-            gvEntrada.EditIndex = Convert.ToInt16(e.NewEditIndex);
-
-            //gvLista.AutoResizeColumns();
-            //gvLista.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
-            //gvLista.AutoResizeColumns(DataGridViewAutoSizeColumnsMo‌​de.Fill);
-            int indice = gvEntrada.EditIndex = e.NewEditIndex;
-            //int i = gvLista.Rows[indice].Cells.Count;
-
-            //for (int i = 0; i < gvLista.Columns.Count; i++)
-            //{
-            //    gvLista.Columns[i].ItemStyle.Width = 10;
-            //}
-
-            
-
-            Carga_Lotes(this.Session["GridOrden"].ToString());
-            this.Session["GridEdicion"] = "1";
-            GridViewRow row = gvEntrada.Rows[indice];
-            row.BackColor = Color.FromName("#ffead1");
-            //gvControl.Rows[indice].Cells[0].Enabled = false;
-            //gvLista.Rows[indice].Cells[1].Enabled = false;
-            //gvEntrada.Rows[indice].Cells[2].Enabled = false;
-            //gvEntrada.Rows[indice].Cells[3].Enabled = false;
-            //gvEntrada.Rows[indice].Cells[4].Enabled = false;
-            //gvEntrada.Rows[indice].Cells[5].Enabled = false;
-            //gvEntrada.Rows[indice].Cells[6].Enabled = false;
-            //gvEntrada.Rows[indice].Cells[7].Enabled = false;
-            //gvEntrada.Rows[indice].Cells[8].Enabled = false;
-            //gvEntrada.Rows[indice].Cells[9].Enabled = false;
-            //gvEntrada.Rows[indice].Cells[10].Enabled = false;
-            //gvEntrada.Rows[indice].Cells[11].Enabled = false;
-            //gvLista.Rows[indice].Cells[16].Enabled = false;
-            //Carga_tablaLista();
-            //DataTable dt = this.Session["MiConsulta"] as DataTable;
-            //gvControl.DataSource = dt;
-            //gvControl.DataBind();
-        }
-
-        protected void gvEntrada_RowUpdating(object sender, GridViewUpdateEventArgs e)
-        {
-            //if (this.Session["EstadoCabecera"].ToString() == "3") { return; }
-            GridViewRow row = gvEntrada.Rows[e.RowIndex];
-            string miro = gvEntrada.DataKeys[e.RowIndex].Value.ToString();
-            int indice = gvEntrada.EditIndex;
-
-            //string rID = "";
-            string rTIPOFORM = "";
-            string rFECHA = "";
-            string rTIPOPLANTA = "";
-            string rVARIEDAD = "";
-            string rLOTE = "";
-            string rLOTEDESTINO = "";
-
-            string rUNIDADES = "";
-            string rNUM_UNIDADES = "";
-            string rMANOJOS = "";
-            string rDESDE = "";
-            string rHASTA = "";
-            string rETDESDE = "";
-
-            string rETHASTA = "";
-            string rTUNELES = "";
-            string rPASILLOS = "";
-            string rOK = "";
-            string rOBSERVACIONES = "";
-            string rDeviceName = "";
-            string rEstado = "";
-            string rTabSendTime = "";
-            string rReceiveTime = "";
-
-            try
-            {
-
-                //TextBox txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabID") as TextBox);
-                //if (txtBox != null)
-                //{
-                //    if (txtBox.Text != "")
-                //    {
-                //        rID = txtBox.Text;
-                //    }
-                //}
-
-                TextBox txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabTIPOFORM") as TextBox);
-                if (txtBox != null)
-                {
-                    if (txtBox.Text != "")
-                    {
-                        rTIPOFORM = txtBox.Text;
-                    }
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabFECHA") as TextBox);
-                if (txtBox != null)
-                {
-                    if (txtBox.Text != "")
-                    {
-                        rFECHA = txtBox.Text;
-                    }
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabTIPOPLANTA") as TextBox);
-                if (txtBox != null)
-                {
-                    if (txtBox.Text != "")
-                    {
-                        rTIPOPLANTA = txtBox.Text;
-                    }
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabVARIEDAD") as TextBox);
-                if (txtBox != null)
-                {
-                    rVARIEDAD = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabLOTE") as TextBox);
-                if (txtBox != null)
-                {
-                    rLOTE = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabLOTEDESTINO") as TextBox);
-                if (txtBox != null)
-                {
-                    rLOTEDESTINO = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabUNIDADES") as TextBox);
-                if (txtBox != null)
-                {
-                    rUNIDADES = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabNUM_UNIDADES") as TextBox);
-                if (txtBox != null)
-                {
-                    rNUM_UNIDADES = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabMANOJOS") as TextBox);
-                if (txtBox != null)
-                {
-                    rMANOJOS = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabDESDE") as TextBox);
-                if (txtBox != null)
-                {
-                    rDESDE = txtBox.Text;
-                }
-
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabHASTA") as TextBox);
-                if (txtBox != null)
-                {
-                    rHASTA = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabETDESDE") as TextBox);
-                if (txtBox != null)
-                {
-                    rETDESDE = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabLETHASTA") as TextBox);
-                if (txtBox != null)
-                {
-                    rETHASTA = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabTUNELES") as TextBox);
-                if (txtBox != null)
-                {
-                    rTUNELES = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabPASILLOS") as TextBox);
-                if (txtBox != null)
-                {
-                    rPASILLOS = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabOK") as TextBox);
-                if (txtBox != null)
-                {
-                    rOK = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabOBSERVACIONES") as TextBox);
-                if (txtBox != null)
-                {
-                    rOBSERVACIONES = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabDeviceName") as TextBox);
-                if (txtBox != null)
-                {
-                    rDeviceName = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabLEstado") as TextBox);
-                if (txtBox != null)
-                {
-                    rEstado = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabSendTime") as TextBox);
-                if (txtBox != null)
-                {
-                    rTabSendTime = txtBox.Text;
-                }
-                txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabReceiveTime") as TextBox);
-                if (txtBox != null)
-                {
-                    rReceiveTime = txtBox.Text;
-                }
-                //txtBox = (gvEntrada.Rows[indice].Cells[10].FindControl("TabLEstado") as TextBox);
-                //if (txtBox != null)
-                //{
-                //    rEstado = txtBox.Text;
-                //}
-
-
-
-                string SQL = "UPDATE ZENTRADA set TIPO_FORM = '" + rTIPOFORM + "', ";
-                SQL += " FECHA = '" + rFECHA + "', ";
-                SQL += " TIPO_PLANTA = '" + rTIPOPLANTA + "', ";
-                SQL += " VARIEDAD = '" + rVARIEDAD + "', ";
-                SQL += " LOTE = '" + rLOTE + "', ";
-                SQL += " LOTEDESTINO = '" + rLOTEDESTINO + "', ";
-                SQL += " UNIDADES = '" + rUNIDADES + "', ";
-                SQL += " NUM_UNIDADES = '" + rNUM_UNIDADES + "', ";
-                SQL += " MANOJOS = '" + rMANOJOS + "', ";
-                SQL += " DESDE = '" + rDESDE + "', ";
-                SQL += " HASTA = '" + rHASTA + "', ";
-                SQL += " ETDESDE = '" + rETDESDE + "', ";
-                SQL += " ETHASTA = '" + rETHASTA + "', ";
-                SQL += " TUNELES = '" + rTUNELES + "', ";
-                SQL += " PASILLOS = '" + rPASILLOS + "', ";
-                SQL += " OK = '" + rOK + "', ";
-                SQL += " OBSERVACIONES = '" + rOBSERVACIONES + "', ";
-                SQL += " DeviceName = '" + rDeviceName + "', ";
-                SQL += " SendTime = '" + rTabSendTime + "', ";
-                SQL += " ReceiveTime = '" + rReceiveTime + "', ";
-                //SQL += " ESTADO = '" + rEstado + "' ";
-
-                if (rEstado == "")
-                {
-                    SQL += " ESTADO = '0' ";
-                }
-                else
-                {
-                    SQL += " ESTADO = '" + rEstado + "' ";
-                }
-
-                SQL += " WHERE ID = " + miro;
-
-
-                Variables.Error = "";
-
-                DBHelper.ExecuteNonQuery(SQL);
-                //Lberror.Text += " 1- gvEntrada_RowUpdating " + Variables.mensajeserver;
-
-                Carga_Lotes();
-
-                gvEntrada.EditIndex = -1;
-
-                //DataTable dt = this.Session["MiConsulta"] as DataTable;
-                //gvControl.DataSource = dt;
-                gvEntrada.DataBind();
-                //ScriptManager.RegisterStartupScript(Page, this.GetType(), "Key", "<script>MakeStaticHeader('" + gvEntrada.ClientID + "', 600, 1100 , 40 ,true); </script>", false);
-                Lberror.Visible = false;
-            }
-            catch (Exception ex)
-            {
-                Lberror.Text += ". " + ex.Message;
-                Lberror.Visible = true;
-            }
-        }
-
-        protected void gvEntrada_SelectedIndexChanged(Object sender, GridViewSelectEventArgs e)
-        {
-            gvEntrada.SelectedRow.BackColor = Color.FromName("#565656");
-        }
-
-
-        private void Carga_Lotes(string sortExpression = null)
-        {
-            string SQL = "";
-            try
-            {
-                if (dtEntrada.SelectedItem.Value == "1")
-                {
-                    if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
-                    {
-                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                        SQL += " FROM ZENTRADA A ";
-                        SQL += " WHERE (A.ESTADO = 0 OR A.ESTADO is null)  ";
-                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
+                        // Enviar el archivo al cliente
+                        Response.Clear();
+                        Response.ContentType = contentType;
+                        Response.AddHeader("Content-Disposition", $"attachment; filename=\"{nombreOriginal}\"");
+                        Response.TransmitFile(rutaArchivo);
+                        Response.End();
                     }
                     else
                     {
-                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-                        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                        SQL += " AND (A.ESTADO = 0 OR A.ESTADO is null) ";
-                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
+                        MostrarMensaje("El archivo solicitado no se encuentra en el servidor.", false);
                     }
-                }
-                else if (dtEntrada.SelectedItem.Value == "2")
-                {
-                    if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
-                    {
-                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                        SQL += " FROM ZENTRADA A ";
-                        SQL += " WHERE A.ESTADO = 1  ";
-                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                    }
-                    else
-                    {
-                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-                        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                        SQL += " AND A.ESTADO = 1 ";
-                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                    }
-                }
-                else if (dtEntrada.SelectedItem.Value == "3")
-                {
-                    if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
-                    {
-                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                        SQL += " FROM ZENTRADA A ";
-                        SQL += " WHERE A.ESTADO = 2  ";
-                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                    }
-                    else
-                    {
-                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-                        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                        SQL += " AND A.ESTADO = 2 ";
-                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                    }
-                }
-                //Borrados
-                else if (dtEntrada.SelectedItem.Value == "4")
-                {
-                    if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
-                    {
-                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                        SQL += " FROM ZENTRADA_BORRADOS A ";
-                        //SQL += " WHERE A.ESTADO = -1  ";
-                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                    }
-                    else
-                    {
-                        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                        SQL += " FROM ZENTRADA_BORRADOS A , ZFORMULARIOS B ";
-                        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                        //SQL += " AND A.ESTADO = -1 ";
-                        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                    }
-                }
-
-                //if (chkOnOff.Checked == true)
-                //{
-                //    if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
-                //    {
-                //        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                //        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                //        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                //        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                //        SQL += " FROM ZENTRADA A ";
-                //        SQL += " WHERE A.ESTADO IN (1,2) ";
-                //        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                //        //SQL += " WHERE ";
-                //        //SQL += " AND A.ESTADO = 1 ";
-                //    }
-                //    else if (DrVariedad.SelectedItem.Value == "9") //Ventas
-                //    {
-                //        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                //        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                //        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                //        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                //        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-                //        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                //        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                //        SQL += " AND A.ESTADO IN (1,2) ";
-                //        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                //        //SQL += " AND A.ESTADO is not null ";
-                //    }
-                //    else
-                //    {
-                //        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                //        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                //        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                //        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                //        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-                //        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                //        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                //        SQL += " AND A.ESTADO IN (1,2) ";
-                //        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                //        //SQL += " AND A.ESTADO is not null ";
-                //    }
-                //}
-                //else
-                //{
-                //    if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
-                //    {
-                //        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                //        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                //        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                //        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                //        SQL += " FROM ZENTRADA A ";
-                //        SQL += " WHERE ";
-                //        SQL += "  (A.ESTADO = 0 OR A.ESTADO is null) ";
-                //        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                //    }
-                //    else if (DrVariedad.SelectedItem.Value == "9") //Ventas
-                //    {
-                //        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                //        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD, A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                //        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                //        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                //        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-                //        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                //        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                //        SQL += " AND (A.ESTADO = 0 OR A.ESTADO is null) ";
-                //        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                //    }
-                //    else
-                //    {
-                //        SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, ";
-                //        SQL += " FORMAT(A.FECHA, 'dd-MM-yyyy') AS FECHA, A.TIPO_PLANTA, A.VARIEDAD,  A.LOTEDESTINO, A.UNIDADES, A.NUM_UNIDADES, A.MANOJOS, ";
-                //        SQL += " A.DESDE, A.HASTA, A.ETDESDE, A.ETHASTA, A.TUNELES, A.PASILLOS, A.OBSERVACIONES, A.OK, A.DeviceName, ";
-                //        SQL += " A.SendTime, A.ReceiveTime "; // A.DeviceID, ,  A.Barcode, A.FECHAEXP, A.ID_SECUENCIA, A.PRUEBA ";
-                //        SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-                //        SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                //        SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                //        SQL += " AND (A.ESTADO = 0 OR A.ESTADO is null) ";
-                //        SQL += " ORDER BY A.TIPO_FORM, A.LOTE ";
-                //    }
-                //}
-
-
-                DataTable dt = Main.BuscaLote(SQL).Tables[0];
-
-                lbRowEntrada.Text = "Registros: " + dt.Rows.Count;
-
-                //if (sortExpression != null)
-                if (sortExpression == null || sortExpression == "")
-                {
-                    gvEntrada.DataSource = dt;
                 }
                 else
                 {
-                    DataView dv = dt.AsDataView();
-
-                    if (this.Session["GridEdicion"].ToString() == "0")
-                    {
-                        this.SortDirection = this.SortDirection == "ASC" ? "DESC" : "ASC";
-                    }
-                    //this.SortDirection = this.SortDirection == "ASC" ? "DESC" : "ASC";
-
-                    dv.Sort = sortExpression + " " + this.SortDirection;
-                    gvEntrada.DataSource = dv;
-                
-                    
+                    MostrarMensaje("El documento solicitado no existe.", false);
                 }
-                gvEntrada.DataBind();
-                //ScriptManager.RegisterStartupScript(Page, this.GetType(), "Key", "<script>MakeStaticHeader('" + gvEntrada.ClientID + "', 600, 1100 , 40 ,true); </script>", false);
-                //gvEntrada.DataSource = dt;
-                //gvEntrada.DataBind();
-                this.Session["SQL"] = SQL;
-                gvEntrada.EditIndex = -1;
-
-
             }
             catch (Exception ex)
             {
-
-                Lbmensaje.Text = "Error: " + ex.Message;
-                cuestion.Visible = true;
-                Asume.Visible = false;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-                string a = Main.Ficherotraza("CargaLotes --> " + ex.Message + "==> " + SQL);
-                throw new Exception("Error de base de datos.", ex);
-
-
-                //Response.Redirect("thEnd.aspx");
+                MostrarMensaje("Error al descargar el documento: " + ex.Message, false);
             }
         }
 
-        private void Actualiza_Lote()
+        private void MostrarMensaje(string mensaje, bool esExito)
         {
-            string SQL = "";
+            lblMensaje.Text = mensaje;
+            lblMensaje.CssClass = esExito ? "alert alert-success" : "alert alert-danger";
+            lblMensaje.Visible = true;
+        }
+    }
 
-            if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
+    // Clase de servicio para gestión de revisiones de lotes
+    public class RevisionLotesService
+    {
+        private DatabaseConnection _dbConnection;
+        private DatabaseQueryBuilder _queryBuilder;
+
+        public RevisionLotesService(DatabaseConnection dbConnection, DatabaseQueryBuilder queryBuilder)
+        {
+            _dbConnection = dbConnection;
+            _queryBuilder = queryBuilder;
+        }
+
+        public DataTable ObtenerResponsables()
+        {
+            return _queryBuilder
+                .Select("UsuarioId, NombreCompleto, Email")
+                .From("Usuarios")
+                .Where(true, "Activo", "=", true)
+                .OrderBy("NombreCompleto")
+                .Execute();
+        }
+
+        public DataTable ObtenerProductos()
+        {
+            return _queryBuilder
+                .Select("ProductoId, Codigo + ' - ' + Nombre AS NombreProducto, Unidad")
+                .From("Productos")
+                .Where(true, "Activo", "=", true)
+                .OrderBy("Codigo")
+                .Execute();
+        }
+
+        public DataTable ObtenerRevisiones()
+        {
+            return _queryBuilder
+                .Select("r.RevisionId, r.NumeroLote, p.Nombre AS Producto, r.Cantidad, r.Unidad, " +
+                        "r.FechaCreacion, r.Estado, u.NombreCompleto AS Responsable")
+                .From("RevisionesLotes AS r")
+                .Join("Productos AS p", "r.ProductoId = p.ProductoId")
+                .LeftJoin("Usuarios AS u", "r.ResponsableId = u.UsuarioId")
+                .OrderBy("r.FechaCreacion DESC")
+                .Execute();
+        }
+
+        public DataTable ObtenerRevisionPorId(int revisionId)
+        {
+            return _queryBuilder
+                .Select("r.RevisionId, r.NumeroLote, r.FechaCreacion, r.ProductoId, " +
+                        "r.ResponsableId, r.Cantidad, r.Unidad, r.LoteProveedor, " +
+                        "r.FechaProduccion, r.FechaCaducidad, r.Observaciones, r.Estado")
+                .From("RevisionesLotes AS r")
+                .Where(true, "r.RevisionId", "=", revisionId)
+                .Execute();
+        }
+
+        public DataTable ObtenerResultadosRevision(int revisionId)
+        {
+            return _queryBuilder
+            .Select("RevisionId, FechaRevision, ResultadoVisual, " +
+                        "ResultadoOlfativo, ResultadoGustativo, ResultadoTextura, " +
+                        "ResultadoColor, OtrosResultados, CumpleNormas, ComentariosFinales")
+                .From("ResultadosRevisionLotes")
+                .Where(true, "RevisionId", "=", revisionId)
+                .Execute();
+        }
+
+        public DataTable ObtenerDocumentosRevision(int revisionId)
+        {
+            return _queryBuilder
+                .Select("d.DocumentoId, d.TipoDocumento, d.Descripcion, d.NombreOriginal, " +
+                        "d.FechaSubida, u.NombreCompleto AS UsuarioSubida")
+                .From("RevisionLotesDocumentos AS d")
+                .Join("Usuarios AS u", "d.UsuarioSubida = u.UsuarioId")
+                .Where(true, "d.RevisionId", "=", revisionId)
+                .OrderBy("d.FechaSubida DESC")
+                .Execute();
+        }
+
+        public DataTable ObtenerDocumentoPorId(int documentoId)
+        {
+            return _queryBuilder
+                .Select("DocumentoId, RevisionId, TipoDocumento, Descripcion, " +
+                        "NombreOriginal, NombreUnico, RutaArchivo")
+                .From("RevisionLotesDocumentos")
+                .Where(true, "DocumentoId", "=", documentoId)
+                .Execute();
+        }
+
+        public string ObtenerEstadoRevision(int revisionId)
+        {
+            var resultado = _queryBuilder
+                .Select("Estado")
+                .From("RevisionesLotes")
+                .Where(true, "RevisionId", "=", revisionId)
+                .Execute();
+
+            if (resultado.Rows.Count > 0)
             {
-                SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, A.LOTE + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
-                SQL += " FROM ZENTRADA A ";
-                SQL += " WHERE ";
-                SQL += "  (A.ESTADO <> '2' OR A.ESTADO is null) ";
+                return resultado.Rows[0]["Estado"].ToString();
+            }
+
+            return string.Empty;
+        }
+
+        public int ObtenerSecuencialLote(string fechaParte)
+        {
+            var resultado = _queryBuilder
+                .Select("MAX(CAST(SUBSTRING(NumeroLote, LEN(NumeroLote) - 2, 3) AS INT)) AS Secuencial")
+                .From("RevisionesLotes")
+                .Where(true, "NumeroLote", "LIKE", $"L-{fechaParte}-%")
+                .Execute();
+
+            if (resultado.Rows.Count > 0 && resultado.Rows[0]["Secuencial"] != DBNull.Value)
+            {
+                return Convert.ToInt32(resultado.Rows[0]["Secuencial"]);
+            }
+
+            return 0;
+        }
+
+        public bool ExistenResultadosRevision(int revisionId)
+        {
+            var resultado = _queryBuilder
+                .Select("COUNT(*)")
+                .From("ResultadosRevisionLotes")
+                .Where(true, "RevisionId", "=", revisionId)
+                .Execute();
+
+            return Convert.ToInt32(resultado.Rows[0][0]) > 0;
+        }
+
+        public int CrearRevision(
+            string numeroLote,
+            DateTime fechaCreacion,
+            int productoId,
+            int? responsableId,
+            decimal cantidad,
+            string unidad,
+            string loteProveedor,
+            DateTime? fechaProduccion,
+            DateTime? fechaCaducidad,
+            string observaciones,
+            string estado,
+            int usuarioId)
+        {
+            string sql = @"
+                INSERT INTO RevisionesLotes (
+                    NumeroLote,
+                    FechaCreacion,
+                    ProductoId,
+                    ResponsableId,
+                    Cantidad,
+                    Unidad,
+                    LoteProveedor,
+                    FechaProduccion,
+                    FechaCaducidad,
+                    Observaciones,
+                    Estado,
+                    UsuarioCreacion,
+                    FechaRegistro
+                ) VALUES (
+                    @NumeroLote,
+                    @FechaCreacion,
+                    @ProductoId,
+                    @ResponsableId,
+                    @Cantidad,
+                    @Unidad,
+                    @LoteProveedor,
+                    @FechaProduccion,
+                    @FechaCaducidad,
+                    @Observaciones,
+                    @Estado,
+                    @UsuarioCreacion,
+                    @FechaRegistro
+                ); SELECT SCOPE_IDENTITY();";
+
+            Dictionary<string, object> parameters = new Dictionary<string, object>
+            {
+                { "@NumeroLote", numeroLote },
+                { "@FechaCreacion", fechaCreacion },
+                { "@ProductoId", productoId },
+                { "@ResponsableId", responsableId.HasValue ? (object)responsableId.Value : DBNull.Value },
+                { "@Cantidad", cantidad },
+                { "@Unidad", unidad },
+                { "@LoteProveedor", string.IsNullOrEmpty(loteProveedor) ? DBNull.Value : (object)loteProveedor },
+                { "@FechaProduccion", fechaProduccion.HasValue ? (object)fechaProduccion.Value : DBNull.Value },
+                { "@FechaCaducidad", fechaCaducidad.HasValue ? (object)fechaCaducidad.Value : DBNull.Value },
+                { "@Observaciones", string.IsNullOrEmpty(observaciones) ? DBNull.Value : (object)observaciones },
+                { "@Estado", estado },
+                { "@UsuarioCreacion", usuarioId },
+                { "@FechaRegistro", DateTime.Now }
+            };
+
+            // Ejecutar la inserción y obtener el ID generado
+            object result = _dbConnection.ExecuteScalar(sql, parameters);
+            int revisionId = Convert.ToInt32(result);
+
+            // Registrar acción en historial
+            RegistrarAccionHistorial(usuarioId, "Crear", "RevisionesLotes", $"Revisión de lote {numeroLote}");
+
+            return revisionId;
+        }
+
+        public void ActualizarRevision(
+            int revisionId,
+            string numeroLote,
+            DateTime fechaCreacion,
+            int productoId,
+            int? responsableId,
+            decimal cantidad,
+            string unidad,
+            string loteProveedor,
+            DateTime? fechaProduccion,
+            DateTime? fechaCaducidad,
+            string observaciones,
+            string estado,
+            int usuarioId)
+        {
+            // Obtener el estado actual para verificar cambios
+            string estadoAnterior = ObtenerEstadoRevision(revisionId);
+
+            string sql = @"
+                UPDATE RevisionesLotes SET
+                    NumeroLote = @NumeroLote,
+                    FechaCreacion = @FechaCreacion,
+                    ProductoId = @ProductoId,
+                    ResponsableId = @ResponsableId,
+                    Cantidad = @Cantidad,
+                    Unidad = @Unidad,
+                    LoteProveedor = @LoteProveedor,
+                    FechaProduccion = @FechaProduccion,
+                    FechaCaducidad = @FechaCaducidad,
+                    Observaciones = @Observaciones,
+                    Estado = @Estado,
+                    UsuarioModificacion = @UsuarioModificacion,
+                    FechaModificacion = @FechaModificacion
+                WHERE RevisionId = @RevisionId";
+
+            Dictionary<string, object> parameters = new Dictionary<string, object>
+            {
+                { "@RevisionId", revisionId },
+                { "@NumeroLote", numeroLote },
+                { "@FechaCreacion", fechaCreacion },
+                { "@ProductoId", productoId },
+                { "@ResponsableId", responsableId.HasValue ? (object)responsableId.Value : DBNull.Value },
+                { "@Cantidad", cantidad },
+                { "@Unidad", unidad },
+                { "@LoteProveedor", string.IsNullOrEmpty(loteProveedor) ? DBNull.Value : (object)loteProveedor },
+                { "@FechaProduccion", fechaProduccion.HasValue ? (object)fechaProduccion.Value : DBNull.Value },
+                { "@FechaCaducidad", fechaCaducidad.HasValue ? (object)fechaCaducidad.Value : DBNull.Value },
+                { "@Observaciones", string.IsNullOrEmpty(observaciones) ? DBNull.Value : (object)observaciones },
+                { "@Estado", estado },
+                { "@UsuarioModificacion", usuarioId },
+                { "@FechaModificacion", DateTime.Now }
+            };
+
+            _dbConnection.ExecuteNonQuery(sql, parameters);
+
+            // Registrar cambio de estado si aplica
+            if (estadoAnterior != estado)
+            {
+                RegistrarAccionHistorial(usuarioId, "CambioEstado", "RevisionesLotes", $"Revisión {revisionId}: de {estadoAnterior} a {estado}");
             }
             else
             {
-                SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, A.LOTE + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
-                SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-                SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                if (dtEntrada.SelectedItem.Value == "1")
-                {
-                    SQL += " AND A.ESTADO is not null ";
-                }
-                else if (dtEntrada.SelectedItem.Value == "2")
-                {
-                    SQL += " AND A.ESTADO = 1 ";
-                }
-                else if (dtEntrada.SelectedItem.Value == "3")
-                {
-                    SQL += " AND A.ESTADO = 2 ";
-                }
-                else if (dtEntrada.SelectedItem.Value == "4")
-                {
-                    SQL += " AND A.ESTADO = -1 ";
-                }
-                //if (chkOnOff.Checked == true)
-                //{
-                //    SQL += " AND A.ESTADO is not null ";
-                //}
-                //else
-                //{
-                //    SQL += " AND (A.ESTADO <> '2' OR A.ESTADO is null) ";
-                //}
+                RegistrarAccionHistorial(usuarioId, "Actualizar", "RevisionesLotes", $"Revisión de lote {numeroLote}");
             }
-            DataTable dbB = Main.BuscaLote(SQL).Tables[0];
-            this.SetDropDownListItemColor(dbB);
         }
 
-        private void Carga_LotesScaneados(string ID)
+        public void EliminarRevision(int revisionId, int usuarioId)
         {
-            //string SQL = "SELECT * FROM ZLOTESCREADOS  WHERE ZESTADO = 0 ";
-            try
+            // Primero obtener información para el historial
+            var revision = _queryBuilder
+                .Select("NumeroLote, ProductoId")
+                .From("RevisionesLotes")
+                .Where(true, "RevisionId", "=", revisionId)
+                .Execute();
+
+            if (revision.Rows.Count == 0)
             {
-                string SQL = "SELECT * FROM ZLOTESCREADOS  WHERE ZESTADO = 0 ";
-                SQL += "AND ZID_SECUENCIA in (" + ID + ")";
-                SQL += " ORDER BY ZLOTE ";
-                DataTable dbA = Main.BuscaLote(SQL).Tables[0];
-                //DrScaneados.Items.Clear();
-                //DrScaneados.DataValueField = "ZID";
-                //DrScaneados.DataTextField = "ZLOTE";
-                //// insertamos el elemento en la primera posicion:
-                //DrScaneados.Items.Insert(0, new ListItem("Seleccionar Lote", ""));
-                //DrScaneados.DataSource = dbA;
-                //DrScaneados.DataBind();
-                //DrScaneados.SelectedIndex = -1;
-
-                ////SQL = "SELECT * FROM ZENTRADA  WHERE ESTADO IS NULL OR ESTADO ='0' AND ZID_SECUENCIA = " + ID;
-
-                ////SQL = " SELECT DISTINCT(B.ZLOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, B.ZID_SECUENCIA, A.TIPO_FORM, A.LOTE + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
-                ////SQL += " FROM ZENTRADA A, ZLOTESCREADOS B ";
-                ////SQL += " WHERE A.LOTE = B.ZLOTE ";
-                ////SQL += " AND B.ZID_SECUENCIA in (" + ID + ")";
-                ////SQL += " AND A.ESTADO <> '2' ";
-                //if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
-                //{
-                //    SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, A.LOTE + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
-                //    SQL += " FROM ZENTRADA A ";
-                //    SQL += " WHERE ";
-                //    SQL += "  (A.ESTADO <> '2' OR A.ESTADO is null) ";
-                //}
-                //else
-                //{
-                //    SQL = " SELECT DISTINCT(A.LOTE) AS LOTE, A.ID, A.LOTEDESTINO, A.ESTADO, A.TIPO_FORM, A.LOTE + ' (' + A.TIPO_FORM + ')    ' + A.LOTEDESTINO  AS TODO ";
-                //    SQL += " FROM ZENTRADA A , ZFORMULARIOS B ";
-                //    SQL += " WHERE B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-                //    SQL += " AND A.TIPO_FORM = B.ZTITULO ";
-                //    SQL += " AND (A.ESTADO <> '2' OR A.ESTADO is null) ";
-                //}
-
-
-                //DataTable dbB = Main.BuscaLote(SQL).Tables[0];
-                //DrLotes.Items.Clear();
-                //DrLotes.DataValueField = "ID";
-                //DrLotes.DataTextField = "TODO";
-                //DrLotes.Items.Insert(0, new ListItem("Seleccionar Lote", ""));
-                //DrLotes.DataSource = dbB;
-                //DrLotes.DataBind();
-                //DrLotes.SelectedIndex = -1;
-
-                //this.SetDropDownListItemColor(dbB);
-
-                //SQL = "SELECT LOTE, TIPO_FORM, COUNT(*) as total FROM ZENTRADA GROUP BY LOTE, TIPO_FORM HAVING COUNT(*) > 1";
-                //dbA = Main.BuscaLote(SQL).Tables[0];
-                //if (dbA.Rows.Count == 0)
-                //{
-                //    LbDuplicados.Text = "No";
-                //    LbDuplicados.ForeColor = Color.Black;
-                //}
-                //else
-                //{
-                //    LbDuplicados.Text = "Si";
-                //    LbDuplicados.ForeColor = Color.Red;
-                //}
+                throw new Exception("La revisión no existe.");
             }
-            catch (Exception ex)
+
+            string numeroLote = revision.Rows[0]["NumeroLote"].ToString();
+            int productoId = Convert.ToInt32(revision.Rows[0]["ProductoId"]);
+
+            // Obtener nombre del producto
+            var producto = _queryBuilder
+                .Select("Nombre")
+                .From("Productos")
+                .Where(true, "ProductoId", "=", productoId)
+                .Execute();
+
+            string nombreProducto = producto.Rows[0]["Nombre"].ToString();
+
+            // Eliminar documentos relacionados
+            DataTable documentos = ObtenerDocumentosRevision(revisionId);
+            foreach (DataRow doc in documentos.Rows)
             {
-                string b = ex.Message;
-                Server.Transfer("thEnd.aspx");
+                int documentoId = Convert.ToInt32(doc["DocumentoId"]);
+                EliminarDocumentoRevision(documentoId, usuarioId, false); // Sin registrar en historial individualmente
             }
+
+            // Eliminar resultados si existen
+            if (ExistenResultadosRevision(revisionId))
+            {
+                string sqlResultados = "DELETE FROM ResultadosRevisionLotes WHERE RevisionId = @RevisionId";
+                Dictionary<string, object> parametersResultados = new Dictionary<string, object>
+                {
+                    { "@RevisionId", revisionId }
+                };
+
+                _dbConnection.ExecuteNonQuery(sqlResultados, parametersResultados);
+            }
+
+            // Eliminar la revisión
+            string sqlRevision = "DELETE FROM RevisionesLotes WHERE RevisionId = @RevisionId";
+            Dictionary<string, object> parametersRevision = new Dictionary<string, object>
+            {
+                { "@RevisionId", revisionId }
+            };
+
+            _dbConnection.ExecuteNonQuery(sqlRevision, parametersRevision);
+
+            // Registrar acción en historial
+            RegistrarAccionHistorial(usuarioId, "Eliminar", "RevisionesLotes", $"Revisión de lote {numeroLote} para {nombreProducto}");
         }
 
-
-        private void SetDropDownListItemColor(DataTable dt)
+        public void CrearResultadosRevision(
+            int revisionId,
+            DateTime? fechaRevision,
+            string resultadoVisual,
+            string resultadoOlfativo,
+            string resultadoGustativo,
+            string resultadoTextura,
+            string resultadoColor,
+            string otrosResultados,
+            bool cumpleNormas,
+            string comentariosFinales,
+            int usuarioId)
         {
-            foreach (ListItem item in DrVariedad.Items)
+            string sql = @"
+                INSERT INTO ResultadosRevisionLotes (
+                    RevisionId,
+                    FechaRevision,
+                    ResultadoVisual,
+                    ResultadoOlfativo,
+                    ResultadoGustativo,
+                    ResultadoTextura,
+                    ResultadoColor,
+                    OtrosResultados,
+                    CumpleNormas,
+                    ComentariosFinales,
+                    UsuarioCreacion,
+                    FechaRegistro
+                ) VALUES (
+                    @RevisionId,
+                    @FechaRevision,
+                    @ResultadoVisual,
+                    @ResultadoOlfativo,
+                    @ResultadoGustativo,
+                    @ResultadoTextura,
+                    @ResultadoColor,
+                    @OtrosResultados,
+                    @CumpleNormas,
+                    @ComentariosFinales,
+                    @UsuarioCreacion,
+                    @FechaRegistro
+                )";
+
+            Dictionary<string, object> parameters = new Dictionary<string, object>
             {
-                foreach (DataRow fila in dt.Rows)
-                {
-                    if (fila["ID"].ToString() == item.Value)
-                    {
-                        if (fila["ESTADO"].ToString() == "0")
-                        {
-                            item.Attributes.CssStyle.Add("color", "green");
-                        }
-                        else if (fila["ESTADO"].ToString() == "1")
-                        {
-                            item.Attributes.CssStyle.Add("color", "orange");
-                        }
-                        else if (fila["ESTADO"].ToString() == "2")
-                        {
-                            item.Attributes.CssStyle.Add("color", "#21c9cf");
-                        }
-                        else
-                        {
-                            //item.Attributes.CssStyle.Add("color", "grey");
-                        }
-                        break;
-                    }
-                }
-            }
+                { "@RevisionId", revisionId },
+                { "@FechaRevision", fechaRevision.HasValue ? (object)fechaRevision.Value : DBNull.Value },
+                { "@ResultadoVisual", string.IsNullOrEmpty(resultadoVisual) ? DBNull.Value : (object)resultadoVisual },
+                { "@ResultadoOlfativo", string.IsNullOrEmpty(resultadoOlfativo) ? DBNull.Value : (object)resultadoOlfativo },
+                { "@ResultadoGustativo", string.IsNullOrEmpty(resultadoGustativo) ? DBNull.Value : (object)resultadoGustativo },
+                { "@ResultadoTextura", string.IsNullOrEmpty(resultadoTextura) ? DBNull.Value : (object)resultadoTextura },
+                { "@ResultadoColor", string.IsNullOrEmpty(resultadoColor) ? DBNull.Value : (object)resultadoColor },
+                { "@OtrosResultados", string.IsNullOrEmpty(otrosResultados) ? DBNull.Value : (object)otrosResultados },
+                { "@CumpleNormas", cumpleNormas },
+                { "@ComentariosFinales", string.IsNullOrEmpty(comentariosFinales) ? DBNull.Value : (object)comentariosFinales },
+                { "@UsuarioCreacion", usuarioId },
+                { "@FechaRegistro", DateTime.Now }
+            };
+
+            _dbConnection.ExecuteNonQuery(sql, parameters);
+
+            // Obtener número de lote para el historial
+            var revision = _queryBuilder
+                .Select("NumeroLote")
+                .From("RevisionesLotes")
+                .Where(true, "RevisionId", "=", revisionId)
+                .Execute();
+
+            string numeroLote = revision.Rows[0]["NumeroLote"].ToString();
+
+            // Registrar acción en historial
+            RegistrarAccionHistorial(usuarioId, "CrearResultados", "ResultadosRevisionLotes", $"Resultados para revisión de lote {numeroLote}");
         }
 
-
-        private void GeneraSecuencia(string Dato, string Secuencia)
+        public void ActualizarResultadosRevision(
+            int revisionId,
+            DateTime? fechaRevision,
+            string resultadoVisual,
+            string resultadoOlfativo,
+            string resultadoGustativo,
+            string resultadoTextura,
+            string resultadoColor,
+            string otrosResultados,
+            bool cumpleNormas,
+            string comentariosFinales,
+            int usuarioId)
         {
-            //La secuencia es =>   LITERAL#aaS;FECHA#mm;FECHA#dd;SECUENCIA#000
-            string Cadena = "";
-            string Miro = "";
-            try
+            string sql = @"
+                UPDATE ResultadosRevisionLotes SET
+                    FechaRevision = @FechaRevision,
+                    ResultadoVisual = @ResultadoVisual,
+                    ResultadoOlfativo = @ResultadoOlfativo,
+                    ResultadoGustativo = @ResultadoGustativo,
+                    ResultadoTextura = @ResultadoTextura,
+                    ResultadoColor = @ResultadoColor,
+                    OtrosResultados = @OtrosResultados,
+                    CumpleNormas = @CumpleNormas,
+                    ComentariosFinales = @ComentariosFinales,
+                    UsuarioModificacion = @UsuarioModificacion,
+                    FechaModificacion = @FechaModificacion
+                WHERE RevisionId = @RevisionId";
+
+            Dictionary<string, object> parameters = new Dictionary<string, object>
             {
-                string[] CadaLinea = System.Text.RegularExpressions.Regex.Split(Dato, ";");
-                foreach (string Linea in CadaLinea)
-                {
-                    if (Linea != "")
-                    {
-                        if (Linea.Contains("LITERAL#"))
-                        {
-                            Cadena += Linea.Replace("LITERAL#", "");
-                        }
-                        if (Linea.Contains("FECHA#"))
-                        {
-                            Miro = Linea.Replace("FECHA#", "");
-                            Miro = DateTime.Now.ToString(Miro);
-                            Cadena += Miro;
-                        }
-                        if (Linea.Contains("SECUENCIA#"))
-                        {
-                            Miro = Linea.Replace("SECUENCIA#", "");
-                            if (Miro != null)
-                            {
-                                Miro = Miro.Substring(0, Miro.Length - Secuencia.Length) + Secuencia.ToString();
-                                this.Session["NumeroSecuencia"] = Secuencia.ToString();
-                            }
-                            Cadena += Miro;
-                        }
-                    }
-                }
-                if (Cadena != "")
-                {
-                    //txtQRCode.Text = Cadena;
-                    this.Session["LOTEenCURSO"] = Cadena;
-                    //LbSecuenciaLote.Text = Cadena;
-                    //LbSecuenciaLoteQR.Text = Cadena;
+                { "@RevisionId", revisionId },
+                { "@FechaRevision", fechaRevision.HasValue ? (object)fechaRevision.Value : DBNull.Value },
+                { "@ResultadoVisual", string.IsNullOrEmpty(resultadoVisual) ? DBNull.Value : (object)resultadoVisual },
+                { "@ResultadoOlfativo", string.IsNullOrEmpty(resultadoOlfativo) ? DBNull.Value : (object)resultadoOlfativo },
+                { "@ResultadoGustativo", string.IsNullOrEmpty(resultadoGustativo) ? DBNull.Value : (object)resultadoGustativo },
+                { "@ResultadoTextura", string.IsNullOrEmpty(resultadoTextura) ? DBNull.Value : (object)resultadoTextura },
+                { "@ResultadoColor", string.IsNullOrEmpty(resultadoColor) ? DBNull.Value : (object)resultadoColor },
+                { "@OtrosResultados", string.IsNullOrEmpty(otrosResultados) ? DBNull.Value : (object)otrosResultados },
+                { "@CumpleNormas", cumpleNormas },
+                { "@ComentariosFinales", string.IsNullOrEmpty(comentariosFinales) ? DBNull.Value : (object)comentariosFinales },
+                { "@UsuarioModificacion", usuarioId },
+                { "@FechaModificacion", DateTime.Now }
+            };
 
-                    //btnGenerate_Click(null, null);
-                    //LbCodigoLote.Text = "CÓDIGO LOTE:";
+            _dbConnection.ExecuteNonQuery(sql, parameters);
 
+            // Obtener número de lote para el historial
+            var revision = _queryBuilder
+                .Select("NumeroLote")
+                .From("RevisionesLotes")
+                .Where(true, "RevisionId", "=", revisionId)
+                .Execute();
 
-                }
+            string numeroLote = revision.Rows[0]["NumeroLote"].ToString();
 
-            }
-            catch (NullReferenceException ex)
-            {
-                Lberror.Text += ex.Message;
-                //alertaErr.Visible = true;
-                //TextAlertaErr.Text = ex.Message;
-            }
-
+            // Registrar acción en historial
+            RegistrarAccionHistorial(usuarioId, "ActualizarResultados", "ResultadosRevisionLotes", $"Resultados para revisión de lote {numeroLote}");
         }
 
-        private void Habilita_contoles()
+        public void AgregarDocumentoRevision(
+            int revisionId,
+            string tipoDocumento,
+            string descripcion,
+            string nombreOriginal,
+            string nombreUnico,
+            string rutaArchivo,
+            int usuarioId)
         {
-            //TxtCampo.Enabled = true;
-            //TxtFecha.Enabled = true;
-            //TxtVariedad.Enabled = true;
-            //TxtCajas.Enabled = true;
-            //TxtPlantas.Enabled = true;
-            //txtQRCode.Enabled = true;
-            //TxtEstado.Enabled = true;
-            //TxtDispositivo.Enabled = true;
-            ////btnGenerate.Visible = true;
-            ////btnNuevo.Visible = true;
-            ////TxtID.Enabled = true;
-            //TxtForm.Enabled = true;
-            //TxtManojos.Enabled = true;
-            //TxtDesde.Enabled = true;
-            //TxtHasta.Enabled = true;
-            //TxtETDesde.Enabled = true;
-            //TxtETHasta.Enabled = true;
-            //TxtTuneles.Enabled = true;
-            //TxtPasillos.Enabled = true;
-            //TxtLoteDestino.Enabled = true;
-            //TxtObservaciones.Enabled = true;
-            //TxtOK.Enabled = true;
+            string sql = @"
+                INSERT INTO RevisionLotesDocumentos (
+                    RevisionId,
+                    TipoDocumento,
+                    Descripcion,
+                    NombreOriginal,
+                    NombreUnico,
+                    RutaArchivo,
+                    FechaSubida,
+                    UsuarioSubida
+                ) VALUES (
+                    @RevisionId,
+                    @TipoDocumento,
+                    @Descripcion,
+                    @NombreOriginal,
+                    @NombreUnico,
+                    @RutaArchivo,
+                    @FechaSubida,
+                    @UsuarioSubida
+                )";
+
+            Dictionary<string, object> parameters = new Dictionary<string, object>
+            {
+                { "@RevisionId", revisionId },
+                { "@TipoDocumento", tipoDocumento },
+                { "@Descripcion", string.IsNullOrEmpty(descripcion) ? DBNull.Value : (object)descripcion },
+                { "@NombreOriginal", nombreOriginal },
+                { "@NombreUnico", nombreUnico },
+                { "@RutaArchivo", rutaArchivo },
+                { "@FechaSubida", DateTime.Now },
+                { "@UsuarioSubida", usuarioId }
+            };
+
+            _dbConnection.ExecuteNonQuery(sql, parameters);
+
+            // Obtener número de lote para el historial
+            var revision = _queryBuilder
+                .Select("NumeroLote")
+                .From("RevisionesLotes")
+                .Where(true, "RevisionId", "=", revisionId)
+                .Execute();
+
+            string numeroLote = revision.Rows[0]["NumeroLote"].ToString();
+
+            // Registrar acción en historial
+            RegistrarAccionHistorial(usuarioId, "SubirDocumento", "RevisionLotesDocumentos", $"Documento {tipoDocumento} para revisión de lote {numeroLote}");
         }
 
-        private void Deshabilita_contoles()
+        public void EliminarDocumentoRevision(int documentoId, int usuarioId, bool registrarHistorial = true)
         {
-            //TxtCampo.Enabled = false;
-            //TxtFecha.Enabled = false;
-            //TxtVariedad.Enabled = false;
-            //TxtCajas.Enabled = false;
-            //TxtEstado.Enabled = false;
-            //TxtDispositivo.Enabled = false;
-            //TxtPlantas.Enabled = false;
-            //txtQRCode.Enabled = false;
-            //TxtID.Enabled = false;
-            //TxtForm.Enabled = false;
-            //TxtManojos.Enabled = false;
-            //TxtDesde.Enabled = false;
-            //TxtHasta.Enabled = false;
-            //TxtETDesde.Enabled = false;
-            //TxtETHasta.Enabled = false;
-            //TxtTuneles.Enabled = false;
-            //TxtPasillos.Enabled = false;
-            //TxtObservaciones.Enabled = false;
-            //TxtOK.Enabled = false;
-            //TxtLoteDestino.Enabled = false;
+            // Obtener información del documento para el historial y eliminar archivo físico
+            DataTable docInfo = ObtenerDocumentoPorId(documentoId);
 
+            if (docInfo.Rows.Count == 0)
+            {
+                throw new Exception("El documento no existe.");
+            }
+
+            int revisionId = Convert.ToInt32(docInfo.Rows[0]["RevisionId"]);
+            string tipoDocumento = docInfo.Rows[0]["TipoDocumento"].ToString();
+            string rutaArchivo = docInfo.Rows[0]["RutaArchivo"].ToString();
+
+            // Eliminar el archivo físico si existe
+            if (File.Exists(rutaArchivo))
+            {
+                File.Delete(rutaArchivo);
+            }
+
+            // Eliminar el registro de la base de datos
+            string sql = "DELETE FROM RevisionLotesDocumentos WHERE DocumentoId = @DocumentoId";
+            Dictionary<string, object> parameters = new Dictionary<string, object>
+            {
+                { "@DocumentoId", documentoId }
+            };
+
+            _dbConnection.ExecuteNonQuery(sql, parameters);
+
+            // Registrar acción en historial
+            if (registrarHistorial)
+            {
+                // Obtener número de lote para el historial
+                var revision = _queryBuilder
+                    .Select("NumeroLote")
+                    .From("RevisionesLotes")
+                    .Where(true, "RevisionId", "=", revisionId)
+                    .Execute();
+
+                string numeroLote = revision.Rows[0]["NumeroLote"].ToString();
+
+                RegistrarAccionHistorial(usuarioId, "EliminarDocumento", "RevisionLotesDocumentos", $"Documento {tipoDocumento} de revisión de lote {numeroLote}");
+            }
         }
 
-        private void ExportGridToExcel(string NameFile)
+        private void RegistrarAccionHistorial(int usuarioId, string accion, string tablaAfectada, string detalles)
         {
-            ClosedXML.Excel.XLWorkbook wbook = new ClosedXML.Excel.XLWorkbook();
-            DataTable dt = null;
-            dt = Main.BuscaLote(this.Session["SQL"].ToString()).Tables[0];
-            string miro = NameFile.Substring(0, 30);
-            wbook.Worksheets.Add(dt, NameFile.Substring(0, 30));
-            NameFile += " " + DateTime.Now.ToString("dd-MM-yyyy H-mm-ss");
-            // Prepare the response
-            HttpResponse httpResponse = Response;
-            httpResponse.Clear();
-            httpResponse.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            //Provide you file name here
-            httpResponse.AddHeader("content-disposition", "attachment;filename=\"" + NameFile + ".xlsx\"");
+            string sql = @"
+                INSERT INTO HistorialAcciones (
+                    UsuarioId,
+                    FechaRegistro,
+                    Accion,
+                    TablaAfectada,
+                    Detalles
+                ) VALUES (
+                    @UsuarioId,
+                    @FechaRegistro,
+                    @Accion,
+                    @TablaAfectada,
+                    @Detalles
+                )";
 
-            // Flush the workbook to the Response.OutputStream
-            using (MemoryStream memoryStream = new MemoryStream())
+            Dictionary<string, object> parameters = new Dictionary<string, object>
             {
-                wbook.SaveAs(memoryStream);
-                memoryStream.WriteTo(httpResponse.OutputStream);
-                memoryStream.Close();
-            }
+                { "@UsuarioId", usuarioId },
+                { "@FechaRegistro", DateTime.Now },
+                { "@Accion", accion },
+                { "@TablaAfectada", tablaAfectada },
+                { "@Detalles", detalles }
+            };
 
-            httpResponse.End();
+            _dbConnection.ExecuteNonQuery(sql, parameters);
         }
-
-
-        protected void btnPrint_Click(object sender, EventArgs e)
-        {
-            //aqui
-            ExportGridToExcel(DrVariedad.SelectedItem.Text + "-" + dtEntrada.SelectedItem.Text);
-        }
-
-        protected void btnValidaUser_Click(object sender, EventArgs e)
-        {
-
-            alerta.Visible = false;
-            alertaErr.Visible = false;
-            alertaLog.Visible = false;
-            //H1Normal.Visible = false;
-            //H1Seleccion.Visible = false;
-            //H1Red.Visible = false;
-            //H1Green.Visible = false;
-            string SQL = "";
-            //string SQL = "DELETE FROM ZENTRADA WHERE ID = " + LbIDLote.Text;
-            if (this.Session["IDLista"].ToString() == "Escaneados")
-            {
-                SQL = "UPDATE ZLOSTESCREADOS SET ESTADO = '2' ";
-                SQL += " WHERE ID = " + LbIDLote.Text;
-            }
-            else if (this.Session["IDLista"].ToString() == "Lotes")
-            {
-                SQL = "UPDATE ZENTRADA  SET ESTADO = '2' ";
-                SQL += " WHERE ID = " + LbIDLote.Text;
-            }
-
-            DBHelper.ExecuteNonQuery(SQL);
-            LimpiaCajas();
-            Carga_Lotes(this.Session["IDSecuencia"].ToString());
-            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
-
-            //txtQRCode.Text = "Seleccione de listas QR";
-
-            //H1Normal.Visible = true;
-            //DrPrinters_Click();
-        }
-
-        private bool validateTime(string dateInString)
-        {
-            DateTime temp;
-            if (DateTime.TryParse(dateInString, out temp))
-            {
-                return true;
-            }
-            return false;
-        }
-
-
-        protected void btnModifica_Click(object sender, EventArgs e)
-        {
-            //if(TxtID.Text == "")
-            //{
-            //    alerta.Visible = true;
-            //    TextAlerta.Text = "Seleccione un código QR para poder modificar.";
-            //    return;
-            //}
-            //txtQRCodebis.Visible = false;
-            //txtQRCode.Visible = true;
-
-            alerta.Visible = false;
-            alertaErr.Visible = false;
-            alertaLog.Visible = false;
-
-            //BtGuardaLote.Visible = true;
-            //BtModifica.Visible = false;
-            //BtDelete.Enabled = false;
-            Habilita_contoles();
-            //btnGenerate_Click(sender, e);
-            //if (DrPrinters.SelectedItem.Value == "4")
-            //{
-            //    //btnGeneraTodoPerf_Click(sender, e);
-            //}
-            //else
-            //{
-            //    //btnGenerateTodo_Click(sender, e);
-            //}
-            //btnGenerateTodo_Click(sender, e);
-        }
-        protected void btnDelete_Click(object sender, EventArgs e)
-        {
-            //if (TxtID.Text == "")
-            //{
-            //    alerta.Visible = true;
-            //    TextAlerta.Text = "Seleccione un código QR para poder eliminar.";
-            //    return;
-            //}
-            //txtQRCodebis.Visible = false;
-            //txtQRCode.Visible = true;
-
-            //if (BtModifica.Visible == true && TextAlertaLog.Text != "Segundo control de verificación. Este registro pasará su Estado ha eliminado. Si desea eliminar el registro vuelva a pulsar el botón eliminar")
-            //{
-            //    TextAlertaLog.Text = "Segundo control de verificación. Este registro pasará su Estado ha eliminado. Si desea eliminar el registro vuelva a pulsar el botón eliminar";
-            //    alerta.Visible = false;
-            //    alertaErr.Visible = false;
-            //    alertaLog.Visible = true;
-            //    return;
-
-            //}
-            if (TextAlertaLog.Text == "Segundo control de verificación. Este registro pasará su Estado ha eliminado. Si desea eliminar el registro vuelva a pulsar el botón eliminar")
-            {
-                Elimina_Borrados();
-                alerta.Visible = false;
-                alertaErr.Visible = false;
-                alertaLog.Visible = false;
-            }
-        }
-
-        protected void sellectAll(object sender, EventArgs e)
-        {
-            if (ddEntradaPageSize.SelectedIndex != 3)
-            {
-                gvEntrada.AllowPaging = false;
-                ddEntradaPageSize.SelectedIndex = 3;
-                Carga_Lotes();
-                return;
-            }
-
-            CheckBox ChkBoxHeader = (CheckBox)gvEntrada.HeaderRow.FindControl("chkb1");
-            foreach (GridViewRow row in gvEntrada.Rows)
-            {
-                CheckBox ChkBoxRows = (CheckBox)row.FindControl("chbItem");
-                if (ChkBoxHeader.Checked == true)
-                {
-                    ChkBoxRows.Checked = true;
-                }
-                else
-                {
-                    ChkBoxRows.Checked = false;
-                }
-                if (dtEntrada.SelectedItem.Value == "4")
-                {
-                    row.BackColor = Color.FromName("#ff7e62");
-                }
-                else if (dtEntrada.SelectedItem.Value == "3")
-                {
-                    //e.Row.BackColor = Color.FromArgb(228, 237, 128);
-                    row.BackColor = Color.FromName("#c7e2f2");
-                }
-                else if (dtEntrada.SelectedItem.Value == "2")
-                {
-                    //e.Row.BackColor = Color.FromArgb(228, 237, 128);
-                    row.BackColor = Color.FromName("#ffcf62");
-                }
-                else if ((row.DataItemIndex % 2) == 0)
-                {
-                    //Par
-                    row.BackColor = Color.FromName("#fff");
-                }
-                else
-                {
-                    //Impar
-                    row.BackColor = Color.FromName("#f5f5f5");
-                }
-            }
-        }
-
-
-        protected void BTerminado_Click(object sender, EventArgs e)
-        {
-            alerta.Visible = false;
-            alertaErr.Visible = false;
-            alertaLog.Visible = false;
-            //BTerminado.Visible = false;
-            //Btfin.Visible = true;
-            string SQL = "";
-
-            if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
-            {
-                return;
-            }
-            else
-            {
-                foreach (GridViewRow row in gvEntrada.Rows)
-                {
-                    CheckBox check = row.FindControl("chbItem") as CheckBox;
-
-                    if (check.Checked)
-                    {
-                        if (dtEntrada.SelectedItem.Value == "3")
-                        {
-                            string code = gvEntrada.DataKeys[row.RowIndex].Values[0].ToString();
-                            SQL = "UPDATE ZENTRADA  SET ESTADO = '1' ";
-                            SQL += " WHERE ID = " + code;
-                            DBHelper.ExecuteNonQuery(SQL);
-                        }
-                        else if (dtEntrada.SelectedItem.Value == "2")
-                        {
-                            string code = gvEntrada.DataKeys[row.RowIndex].Values[0].ToString();
-                            SQL = "UPDATE ZENTRADA  SET ESTADO = '0' ";
-                            SQL += " WHERE ID = " + code;
-                            DBHelper.ExecuteNonQuery(SQL);
-                        }
-                        //Borrados
-                        else if (dtEntrada.SelectedItem.Value == "4")
-                        {
-                            string code = gvEntrada.DataKeys[row.RowIndex].Values[0].ToString();
-                            //Insert en otra tabla
-                            SQL = " INSERT INTO ZENTRADA (ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
-                            SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA) ";
-                            SQL += " SELECT ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
-                            SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA ";
-                            SQL += " FROM ZENTRADA_BORRADOS WHERE ID = " + code;
-
-                            DBHelper.ExecuteNonQuery(SQL);
-
-                            SQL = " DELETE FROM ZENTRADA_BORRADOS WHERE ID = " + code;
-                            DBHelper.ExecuteNonQuery(SQL);
-                        }
-                    }
-                }
-            }
-            Carga_Lotes();
-        }
-        protected void btnNew_Click(object sender, EventArgs e)
-        {
-
-            alerta.Visible = false;
-            alertaLog.Visible = false;
-            alertaErr.Visible = false;
-            //btProcesa.Visible = false;
-            //btPorcesa.Visible = false;
-            //btNew.Enabled = false;
-
-            string SQL = "SELECT ZSECUENCIA FROM ZSECUENCIAS  WHERE ZID = " + DrVariedad.SelectedItem.Value;
-            DataTable dbA = Main.BuscaLote(SQL).Tables[0];
-            foreach (DataRow fila in dbA.Rows)
-            {
-                this.Session["NumeroSecuencia"] = fila["ZSECUENCIA"].ToString();
-                break;
-            }
-
-            DataTable dt3 = Main.CargaSecuencia().Tables[0];
-            this.Session["Secuencias"] = dt3;
-            foreach (DataRow fila in dt3.Rows)
-            {
-                if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-                {
-                    this.Session["IDSecuencia"] = fila["ZID"].ToString();
-                    GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
-                    Carga_Lotes(this.Session["IDSecuencia"].ToString());
-                    Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
-                    alerta.Visible = true;
-                    break;
-                }
-            }
-
-
-            //if (BtModifica.Visible == true)
-            //{
-            //    if (TxtForm.Enabled == true)
-            //    {
-            //        Oculta_Datos(1);
-            //    }
-            //    else
-            //    {
-            //        Oculta_Datos(0);
-            //    }
-
-            //    DataTable dt3 = Main.CargaSecuencia().Tables[0];
-            //    this.Session["Secuencias"] = dt3;
-            //    foreach (DataRow fila in dt3.Rows)
-            //    {
-            //        if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-            //        {
-            //            this.Session["IDSecuencia"] = fila["ZID"].ToString();
-            //            this.Session["LaMascara"] = fila["ZMASCARA"].ToString();
-            //            GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
-            //            break;
-            //        }
-            //    }
-
-            //}
-            //else
-            //{
-            //    string SQL = "INSERT INTO ZLOTESCREADOS (ZLOTE, ZFECHA, ZESTADO) ";
-            //    SQL += " VALUES ('" + txtQRCode.Text + "','" + DateTime.Now.ToString("dd-MM-yyyy") + "',0)";
-            //    DBHelper.ExecuteNonQuery(SQL);
-
-            //    if (TxtForm.Enabled == true)
-            //    {
-            //        Oculta_Datos(1);
-            //    }
-            //    else
-            //    {
-            //        Oculta_Datos(0);
-            //    }
-
-            //    //Nuevo numero de secuencia
-            //    if (DrVariedad.SelectedItem.Value == "-1")
-            //    {
-            //        alerta.Visible = true;
-            //        Nueva_Secuencia();
-            //    }
-            //    else
-            //    {
-            //        SQL = "SELECT ZSECUENCIA FROM ZSECUENCIAS  WHERE ZID = " + DrVariedad.SelectedItem.Value;
-            //        DataTable dbA = Main.BuscaLote(SQL).Tables[0];
-            //        foreach (DataRow fila in dbA.Rows)
-            //        {
-            //            this.Session["NumeroSecuencia"] = fila["ZSECUENCIA"].ToString();
-            //            break;
-            //        }
-
-            //        int AA = Convert.ToInt32(this.Session["NumeroSecuencia"].ToString()) + 1;
-            //        SQL = "UPDATE ZSECUENCIAS  SET ZSECUENCIA = '" + AA + "' ";
-            //        SQL += " WHERE ZID = " + DrVariedad.SelectedItem.Value;
-            //        //DBHelper.ExecuteNonQuery(Variables.tipo, SQL, Variables.Miconexion, Variables.nomenclatura + "ZSECUENCIAS ");
-            //        DBHelper.ExecuteNonQuery(SQL);
-            //        DataTable dt3 = Main.CargaSecuencia().Tables[0];
-            //        this.Session["Secuencias"] = dt3;
-            //        foreach (DataRow fila in dt3.Rows)
-            //        {
-            //            if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-            //            {
-            //                this.Session["IDSecuencia"] = fila["ZID"].ToString();
-            //                this.Session["LaMascara"] = fila["ZMASCARA"].ToString();
-            //                //GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
-            //                break;
-            //            }
-            //        }
-            //        GeneraSecuencia(this.Session["LaMascara"].ToString(), Convert.ToString(AA));
-            //    }
-            //}
-            //Carga_Lotes(this.Session["IDSecuencia"].ToString());
-
-        }
-
-        //protected void btnUser_Click(object sender, EventArgs e)
-        //{
-        //    if (TxtForm.Enabled == true)
-        //    {
-        //        Deshabilita_contoles();
-        //        Oculta_Datos(0);
-        //    }
-        //    else
-        //    {
-        //        TextAlertaLog.Text = "Deberá introducir un usuario con permisos para poder editar esta página:";
-        //        TextAlertaErr.Text = "";
-        //        TextAlerta.Text = "";
-        //        alerta.Visible = false;
-        //        alertaLog.Visible = true;
-        //        alertaErr.Visible = false;
-        //        //btProcesa.Visible = false;
-        //        //btPorcesa.Visible = false;
-        //        //BTerminado.Visible = false;
-        //        //Btfin.Visible = false;
-        //    }
-        //}
-        protected void btnNuevo_Click(object sender, EventArgs e)
-        {
-            if (DrVariedad.SelectedItem.Value == "-1")
-            {
-                alerta.Visible = true;
-                Nueva_Secuencia();
-            }
-            else
-            {
-                int AA = Convert.ToInt32(this.Session["NumeroSecuencia"].ToString()) + 1;
-                string SQL = "UPDATE ZSECUENCIAS  SET ZSECUENCIA = '" + AA + "' ";
-                SQL += " WHERE ZID = " + DrVariedad.SelectedItem.Value;
-                //DBHelper.ExecuteNonQuery(Variables.tipo, SQL, Variables.Miconexion, Variables.nomenclatura + "ZSECUENCIAS ");
-                DBHelper.ExecuteNonQuery(SQL);
-                DataTable dt3 = Main.CargaSecuencia().Tables[0];
-                this.Session["Secuencias"] = dt3;
-                GeneraSecuencia(this.Session["LaMascara"].ToString(), Convert.ToString(AA));
-            }
-        }
-        //protected void btnNuevoLote_Click(object sender, EventArgs e)
-        //{
-        //    //btnNuevoLote.Visible = false;
-        //    BtGuardaLote.Visible = true;
-        //    BtModifica.Visible = false;
-        //    BtCancelaLote.Visible = true;
-        //    BtDelete.Visible = false;
-        //    //btGeneraNew.Visible = true;
-        //    //Btfin.Visible = false;
-        //    //BTerminado.Visible = false;
-        //    LimpiaCajas();
-        //    TxtForm.Text = "Independiente";
-        //}
-
-        protected void btnCancelaLote_Click(object sender, EventArgs e)
-        {
-            alerta.Visible = false;
-            alertaErr.Visible = false;
-            alertaLog.Visible = false;
-
-            //BtGuardaLote.Visible = false;
-            //BtModifica.Visible = true;
-            //BtDelete.Enabled = true;
-            Deshabilita_contoles();
-
-            //btnNuevoLote.Visible = true;
-            //BtGuardaLote.Visible = false;
-            //BtModifica.Visible = true;
-            //BtCancelaLote.Visible = false;
-            //btGeneraNew.Visible = false;
-            //BtDelete.Visible = true;
-        }
-
-        //private void Repara_Fecha(string Fecha)
-        //{
-        //    string Mdia = "";
-        //    string Mmes = "";
-        //    string Mano = "";
-        //    int a = 0;
-
-        //    if (TxtFecha.Text.Contains("/"))
-        //    {
-        //        string[] CadaLinea = System.Text.RegularExpressions.Regex.Split(TxtFecha.Text, "/");
-
-        //        foreach (string Linea in CadaLinea)
-        //        {
-        //            if (a == 0) { Mdia = Linea; }
-        //            if (a == 1) { Mmes = Linea; }
-        //            if (a == 2)
-        //            {
-        //                Mano = Linea;
-        //                TxtFecha.Text = Mano + "-" + Mmes + "-" + Mdia;
-        //            }
-        //        }
-        //    }
-
-        //    if (TxtFecha.Text.Contains("/"))
-        //    {
-        //        string[] CadaLinea = System.Text.RegularExpressions.Regex.Split(TxtFecha.Text, "-");
-
-        //        foreach (string Linea in CadaLinea)
-        //        {
-        //            if (a == 0) { Mdia = Linea; }
-        //            if (a == 1) { Mmes = Linea; }
-        //            if (a == 2)
-        //            {
-        //                Mano = Linea;
-        //                TxtFecha.Text = Mano + "-" + Mmes + "-" + Mdia;
-        //            }
-        //        }
-        //    }
-        //}
-
-        //private void Convierte_Fecha(string Fecha)
-        //{
-        //    string Mdia = "";
-        //    string Mmes = "";
-        //    string Mano = "";
-        //    int a = 0;
-
-        //    if (TxtFecha.Text.Contains("/"))
-        //    {
-        //        string[] CadaLinea = System.Text.RegularExpressions.Regex.Split(TxtFecha.Text, "/");
-
-        //        foreach (string Linea in CadaLinea)
-        //        {
-        //            if (a == 0) { Mdia = Linea; }
-        //            if (a == 1) { Mmes = Linea; }
-        //            if (a == 2)
-        //            {
-        //                Mano = Linea;
-        //                TxtFecha.Text = Mano + Mmes + Mdia;
-        //            }
-        //        }
-        //    }
-
-        //    if (TxtFecha.Text.Contains("/"))
-        //    {
-        //        string[] CadaLinea = System.Text.RegularExpressions.Regex.Split(TxtFecha.Text, "-");
-
-        //        foreach (string Linea in CadaLinea)
-        //        {
-        //            if (a == 0) { Mdia = Linea; }
-        //            if (a == 1) { Mmes = Linea; }
-        //            if (a == 2)
-        //            {
-        //                Mano = Linea;
-        //                TxtFecha.Text = Mano + Mmes + Mdia;
-        //            }
-        //        }
-        //    }
-        //}
-        //protected void BtGuardaLote_Click(object sender, EventArgs e)
-        //{
-        //    alerta.Visible = false;
-        //    alertaErr.Visible = false;
-        //    alertaLog.Visible = false;
-
-        //    DateTime dt;
-
-        //    //if (DateTime.TryParse(TxtFecha.Text, out dt))
-        //    //if (DateTime.TryParseExact(TxtFecha.Text, "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out dt))
-        //    //{
-        //    //    TextAlertaErr.Text = "El campo FECHA CORTE no contiene una fecha valida.";
-        //    //    TextAlerta.Text = "";
-        //    //    alertaLog.Visible = false;
-        //    //    alerta.Visible = false;
-        //    //    alertaErr.Visible = true;
-        //    //    return;
-        //    //}
-
-        //    Repara_Fecha(TxtFecha.Text);
-        //    txtQRCodebis.Visible = false;
-        //    txtQRCode.Visible = true;
-
-        //    //string SQL = "INSERT INTO ZENTRADA (TIPO_FORM, FECHA, TIPO_PLANTA, VARIEDAD, LOTE, UNIDADES, NUM_UNIDADES, MANOJOS, ";
-        //    //SQL += "DESDE, HASTA, ETDESDE, ETHASTA, TUNELES, PASILLOS, OBSERVACIONES, OK) ";
-        //    //SQL += " VALUES ('" + TxtForm.Text + "','" + TxtFecha.Text + "','" + TxtCampo.Text + "','" + TxtVariedad.Text + "','" + txtQRCode.Text + "','" + TxtCajas.Text + "',";
-        //    //SQL += "'" + TxtPlantas.Text + "','" + TxtManojos.Text + "','" + TxtDesde.Text + "','" + TxtHasta.Text + "','" + TxtETDesde.Text + "','" + TxtETHasta.Text + "',";
-        //    //SQL += "'" + TxtTuneles.Text + "','" + TxtPasillos.Text + "','" + TxtObservaciones.Text + "','" + TxtOK.Text + "')";
-
-        //    //DBHelper.ExecuteNonQuery(SQL);
-        //    //Si no modifica el estado y viene vacio, como existe el formulario en edicion añado un cero
-        //    if(TxtEstado.Text == "" || TxtEstado.Text == null)
-        //    {
-        //        TxtEstado.Text = "0";
-        //    }
-
-        //    string SQL = "";
-
-        //    if (this.Session["IDLista"].ToString() == "Escaneados")
-        //    {
-        //        SQL = "UPDATE ZLOTESCREADOS SET ZFECHA = '" + TxtFecha.Text + "',";
-        //        SQL += "LOTE ='" + txtQRCode.Text + "',";               
-        //        SQL += " WHERE ID = " + LbIDLote.Text;
-        //    }
-        //    else if (this.Session["IDLista"].ToString() == "Lotes")
-        //    {
-        //        SQL = "UPDATE ZENTRADA SET TIPO_FORM = '" + TxtForm.Text + "',";
-        //        SQL += "FECHA ='" + TxtFecha.Text + "',";
-        //        SQL += "TIPO_PLANTA ='" + TxtCampo.Text + "',";
-        //        SQL += "VARIEDAD ='" + TxtVariedad.Text + "',";
-        //        SQL += "LOTE ='" + txtQRCode.Text + "',";
-        //        SQL += "UNIDADES ='" + TxtCajas.Text + "',";
-        //        SQL += "NUM_UNIDADES ='" + TxtPlantas.Text + "',";
-        //        SQL += "MANOJOS ='" + TxtManojos.Text + "',";
-        //        SQL += "DESDE ='" + TxtDesde.Text + "',";
-        //        SQL += "HASTA ='" + TxtHasta.Text + "',";
-        //        SQL += "ETDESDE ='" + TxtETDesde.Text + "',";
-        //        SQL += "ETHASTA ='" + TxtETHasta.Text + "',";
-        //        SQL += "TUNELES ='" + TxtTuneles.Text + "',";
-        //        SQL += "PASILLOS ='" + TxtPasillos.Text + "',";
-        //        SQL += "OBSERVACIONES ='" + TxtObservaciones.Text + "',";
-        //        SQL += "LOTEDESTINO ='" + TxtLoteDestino.Text + "',";              
-        //        SQL += "OK ='" + TxtOK.Text + "',";
-        //        SQL += "ESTADO ='" + TxtEstado.Text + "',";
-        //        SQL += "DeviceName ='" + TxtDispositivo.Text + "'";
-        //        SQL += " WHERE ID = " + LbIDLote.Text;
-        //    }
-        //    DBHelper.ExecuteNonQuery(SQL);
-
-        //    btnCancelaLote_Click(sender, e);
-
-        //    //LimpiaCajas();
-
-
-
-        //    //Btfin.Visible = false;
-        //    //BTerminado.Visible = true;
-        //    //btnGenerate_Click(sender, e);
-        //    if (DrPrinters.SelectedItem.Value == "4")
-        //    {
-        //        //btnGeneraTodoPerf_Click(sender, e);
-        //    }
-        //    else
-        //    {
-        //        //btnGenerateTodo_Click(sender, e);
-        //    }
-        //    //btnGenerateTodo_Click(sender, e);
-        //    alerta.Visible = false;
-        //    Carga_Lotes(this.Session["IDSecuencia"].ToString());
-        //    Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
-        //}
-        protected void BTfin_Click(object sender, EventArgs e)
-        {
-            int A = 0;
-            foreach (GridViewRow row in gvEntrada.Rows)
-            {
-                CheckBox check = row.FindControl("chbItem") as CheckBox;
-
-                if (check.Checked)
-                {
-                    A += 1;
-                }
-            }
-
-            Lbmensaje.Text = "Se eliminarán " + A + " registros seleccionados, ¿Desea continuar?";
-            cuestion.Visible = true;
-            Asume.Visible = false;
-            windowmessaje.Visible = true;
-            MiCloseMenu();
-        }
-
-        protected void BTElimina_Click(object sender, EventArgs e)
-        {
-            //elimina los chequeados
-            alerta.Visible = false;
-            alertaErr.Visible = false;
-            alertaLog.Visible = false;
-            string SQL = "";
-
-            foreach (GridViewRow row in gvEntrada.Rows)
-            {
-                CheckBox check = row.FindControl("chbItem") as CheckBox;
-
-                if (check.Checked)
-                {
-                    //Insert en otra tabla
-                    string code = gvEntrada.DataKeys[row.RowIndex].Values[0].ToString();
-                    SQL = " INSERT INTO ZENTRADA_BORRADOS (ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
-                    SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA) ";
-                    SQL += " SELECT ID,TIPO_FORM,FECHA,TIPO_PLANTA,VARIEDAD,LOTE,LOTEDESTINO,UNIDADES,NUM_UNIDADES, ";
-                    SQL += " MANOJOS,DESDE,HASTA,ETDESDE,ETHASTA,TUNELES,PASILLOS,OBSERVACIONES,OK,DeviceID,DeviceName,SendTime,ReceiveTime,Barcode,ESTADO,FECHAEXP,ID_SECUENCIA ";
-                    SQL += " FROM ZENTRADA WHERE ID = " + code;
-
-                    DBHelper.ExecuteNonQuery(SQL);
-
-                    SQL = " DELETE FROM ZENTRADA WHERE ID = " + code;
-                    DBHelper.ExecuteNonQuery(SQL);
-
-                    //string code = gvEntrada.DataKeys[row.RowIndex].Values[0].ToString();     //get datakey
-                    //    SQL = " UPDATE ZENTRADA SET ESTADO = -1 WHERE ID = " + code;
-                }
-            }
-
-
-            Carga_Lotes();
-
-            if (DrVariedad.SelectedItem.Value == "5")
-            {
-                BtEnviaFinalizados.Enabled = false;
-            }
-            else
-            {
-                BtEnviaFinalizados.Enabled = true;
-            }
-
-        }
-        //protected void btnPorcesa_Click(object sender, EventArgs e)
-        //{
-        //    alerta.Visible = false;
-        //    alertaErr.Visible = false;
-        //    btnPrint2.Visible = false;
-        //    //BTerminado.Visible = false;
-        //    //Btfin.Visible = false;
-        //    //btProcesa.Visible = false;
-        //    //btPorcesa.Visible = false;
-        //    alertaLog.Visible = false;
-        //    //btNew.Enabled = false;
-
-        //    string SQL = "SELECT * FROM ZBANDEJAS  ";
-        //    DataTable dbP = Main.BuscaLote(SQL).Tables[0];
-
-
-        //    SQL = "SELECT * FROM ZLOTESCREADOS  WHERE ZLOTE = '" + txtQRCode.Text + "' ";
-        //    DataTable dbB = Main.BuscaLote(SQL).Tables[0];
-        //    //foreach (DataRow fila in dbB.Rows)
-        //    //{
-        //    //    btNew.Enabled = true;
-        //    //    break;
-        //    //}
-
-        //    Boolean Esta = false;
-        //    SQL = "SELECT * FROM ZENTRADA  WHERE LOTE = '" + txtQRCode.Text + "' ";
-        //    DataTable dbA = Main.BuscaLote(SQL).Tables[0];
-        //    foreach (DataRow fila in dbA.Rows)
-        //    {
-        //        if (fila["LOTE"].ToString() == txtQRCode.Text)
-        //        {
-        //            Esta = true;
-        //            LbIDLote.Text = fila["ID"].ToString();
-        //            this.Session["IDSecuencia"] = fila["ZID"].ToString();
-
-        //            TxtCampo.Text = fila["TIPO_PLANTA"].ToString();
-        //            TxtFecha.Text = fila["FECHA"].ToString();
-        //            TxtVariedad.Text = fila["VARIEDAD"].ToString();
-        //            TxtCajas.Text = fila["UNIDADES"].ToString();//* Tabla BANDEJAS 
-        //            TxtDesde.Text = fila["DESDE"].ToString();
-
-
-        //            TxtID.Text = fila["ID"].ToString();
-        //            TxtForm.Text = fila["TIPO_FORM"].ToString();
-        //            TxtManojos.Text = fila["MANOJOS"].ToString();
-        //            TxtDesde.Text = fila["DESDE"].ToString();
-        //            TxtHasta.Text = fila["HASTA"].ToString();
-        //            TxtETDesde.Text = fila["ETDESDE"].ToString();
-        //            TxtETHasta.Text = fila["ETHASTA"].ToString();
-        //            TxtTuneles.Text = fila["TUNELES"].ToString();
-        //            TxtPasillos.Text = fila["PASILLOS"].ToString();
-        //            TxtObservaciones.Text = fila["OBSERVACIONES"].ToString();
-        //            TxtOK.Text = fila["OK"].ToString();
-
-
-
-        //            if (TxtCajas.Text == "CAJAS")
-        //            {
-        //                //LbnumeroPlantas.Text = "Número de Cajas:";
-        //                LbCajasS.Text = "Unidades: " + fila["UNIDADES"].ToString() + " " + fila["NUM_UNIDADES"].ToString(); // fila["UNIDADES"].ToString();
-        //                LbPlantasS.Text = "Nº Plantas: " + fila["NUM_UNIDADES"].ToString();
-
-        //            }
-        //            if (TxtCajas.Text == "PLANTAS")
-        //            {
-        //                //LbnumeroPlantas.Text = "Número de Plantas:";
-        //                LbCajasS.Text = "Unidades: " + fila["UNIDADES"].ToString();
-        //                LbPlantasS.Text = "Nº Plantas: " + fila["NUM_UNIDADES"].ToString();
-        //            }
-
-        //            TxtPlantas.Text = fila["NUM_UNIDADES"].ToString();
-        //            LbCampoS.Text = "CAMPO O SECTOR: " + fila["DESDE"].ToString();
-        //            try
-        //            {
-        //                foreach (DataRow fila2 in dbP.Rows)
-        //                {
-        //                    if (fila2["ZTIPO_PLANTA"].ToString() == fila["TIPO_PLANTA"].ToString() && fila2["ZTIPO_FORMATO"].ToString() == fila["UNIDADES"].ToString())
-        //                    {
-        //                        if (fila["UNIDADES"].ToString() == "PLANTAS")
-        //                        {
-        //                            LbPlantasS.Text = "Nº Plantas: " + fila["NUM_UNIDADES"].ToString();
-        //                            break;
-        //                        }
-        //                        else if (fila["UNIDADES"].ToString() == "CAJAS")
-        //                        {
-        //                            if (fila["MANOJOS"].ToString() == "0" || fila["MANOJOS"].ToString() == "" || fila["MANOJOS"].ToString() == null)
-        //                            {
-        //                                LbPlantasS.Text = "Nº Plantas: " + (Convert.ToInt32(fila["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                            }
-        //                            else
-        //                            {
-        //                                foreach (DataRow fila3 in dbP.Rows)
-        //                                {
-        //                                    if (fila3["ZTIPO_PLANTA"].ToString() == fila["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
-        //                                    {
-        //                                        int NN = Convert.ToInt32(fila["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
-        //                                        LbPlantasS.Text = "Nº Plantas: " + ((Convert.ToInt32(fila["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                        break;
-        //                                    }
-        //                                }
-        //                            }
-        //                            break;
-        //                        }
-        //                    }
-        //                }
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                Lberror.Text = ex.Message;
-        //            }
-        //            LbPlantaS.Text = "TIPO PLANTA: " + fila["TIPO_PLANTA"].ToString();
-        //            LbFechaS.Text = "FECHA CORTE: " + fila["FECHA"].ToString();
-        //            LbVariedadS.Text = "VARIEDAD: " + fila["VARIEDAD"].ToString();
-
-        //            //if (TxtID.Enabled == true)
-        //            //{
-        //            //    Oculta_Datos(1);
-        //            //}
-        //            //else
-        //            //{
-        //            //    Oculta_Datos(0);
-        //            //}
-
-        //            Lbcompleto.Text = "QR COMPLETO";
-        //            this.Session["Procesa"] = "1";
-        //            btnGenerate_Click(sender, e);
-        //            btnGenerateTodo_Click(sender, e);
-        //            this.Session["Procesa"] = "0";
-        //            //if (fila["ESTADO"].ToString() == "" || fila["ESTADO"].ToString() == null)
-        //            //{
-        //            //    BTerminado.Visible = true;
-        //            //}
-        //            //else
-        //            //{
-        //            //    Btfin.Visible = true;
-        //            //}
-        //            break;
-        //        }
-        //    }
-        //    if (Esta == false)
-        //    {
-        //        H1Normal.Visible = false;
-        //        H1Seleccion.Visible = false;
-        //        H1Red.Visible = true;
-        //        H1Green.Visible = false;
-
-        //        //HLoteProceso.InnerText = "Código QR YA ASIGNADO, PENDIENTE PROCESAR";
-        //        //HLoteProceso.Attributes.Add("style", "color: red; font-weight:bold;");
-
-        //        btnGenerate_Click(sender, e);
-        //        TextAlertaErr.Text = "Aún no se encuentra el código de lote en la base de datos para formularios de Scan-IT. Genere el registro del formulario desde el Móvil, " + Environment.NewLine;
-        //        TextAlertaErr.Text += "para este Código QR que se presenta en pantalla y, una vez enviado, pulse nuevamente sobre este botón. O no haga nada, siga con otros lotes," + Environment.NewLine;
-        //        TextAlertaErr.Text += "pues este ha quedado guardado en la lista '2', y una vez se introduzca el formulario correspondiente lo encontrará en la lista '1'" + Environment.NewLine;
-        //        TextAlerta.Text = "";
-        //        alertaLog.Visible = false;
-        //        alerta.Visible = false;
-        //        alertaErr.Visible = true;
-        //        btProcesa.Visible = false;
-        //        btPorcesa.Visible = true;
-        //    }
-        //    else
-        //    {
-        //        SQL = "UPDATE ZLOTESCREADOS SET ZESTADO = 1 WHERE ZLOTE = '" + txtQRCode.Text + "' ";
-        //        DBHelper.ExecuteNonQuery(SQL);
-        //        //alerta.Visible = false;
-        //        //alertaErr.Visible = false;
-        //    }
-        //    if(btNew.Enabled == false)
-        //    {
-        //        SQL = "INSERT INTO ZLOTESCREADOS (ZLOTE, ZFECHA, ZESTADO, ZID_SECUENCIA) ";
-        //        SQL += " VALUES ('" + txtQRCode.Text + "','" + DateTime.Now.ToString("dd-MM-yyyy") + "',0," + DrVariedad.SelectedItem.Value + ")";
-        //        DBHelper.ExecuteNonQuery(SQL);
-
-        //        SQL = "SELECT ZSECUENCIA FROM ZSECUENCIAS  WHERE ZID = " + DrVariedad.SelectedItem.Value;
-        //        DataTable dbC = Main.BuscaLote(SQL).Tables[0];
-        //        foreach (DataRow fila in dbC.Rows)
-        //        {
-        //            this.Session["NumeroSecuencia"] = fila["ZSECUENCIA"].ToString();
-        //            break;
-        //        }
-
-        //        int AA = Convert.ToInt32(this.Session["NumeroSecuencia"].ToString()) + 1;
-        //        SQL = "UPDATE ZSECUENCIAS  SET ZSECUENCIA = '" + AA + "' ";
-        //        SQL += " WHERE ZID = " + DrVariedad.SelectedItem.Value;
-        //        DBHelper.ExecuteNonQuery(SQL);
-        //        btNew.Enabled = true;
-        //    }
-
-        //    Carga_Lotes(this.Session["IDSecuencia"].ToString());
-        //}
-
-        //protected void btnGeneraNew_Click(object sender, EventArgs e)
-        //{
-        //    btnGenerate_Click(sender, e);
-        //    if (DrPrinters.SelectedItem.Value == "4")
-        //    {
-        //        btnGeneraTodoPerf_Click(sender, e);
-        //    }
-        //    else
-        //    {
-        //        btnGenerateTodo_Click(sender, e);
-        //    }
-        //}           
-        //protected void btnGenerate_Click(object sender, EventArgs e)
-        //{
-        //    //Genera la secuencia QR de la etiqueta Lote
-        //    if (this.Session["Procesa"].ToString() == "0")
-        //    {
-        //        H1Normal.Visible = false;
-        //        H1Seleccion.Visible = true;
-        //        H1Red.Visible = false;
-        //        H1Green.Visible = false;
-        //        DrPrinters_Click();
-
-        //        if (DrPrinters.SelectedItem.Value == "1")
-        //        {
-        //            btnPrintA2.Visible = true;
-        //        }
-        //        else
-        //        {
-        //            btnPrintB2.Visible = true;
-        //        }
-
-        //        //HLoteProceso.InnerText = "Código QR seleccionado";
-        //        //HLoteProceso.Attributes.Add("style", "color: black; font-weight:bold;");
-
-        //        Lbcompleto.Text = "";
-        //        alerta.Visible = false;
-        //        alertaErr.Visible = false;
-        //        //TextAlerta.Text = "Ahora puedes escanear el código QR desde Scan-IT con el Móvil, completar su registro en el formulario y enviarlo. Pulsa sobre este botón cuando lo envíes, para poder continuar.";
-        //        //alerta.Visible = true;
-        //        alertaLog.Visible = false;
-        //        btnPrint2.Visible = false;
-        //        //btProcesa.Visible = true;
-        //        //btPorcesa.Visible = false;
-        //        //BTerminado.Visible = false;
-        //    }
-
-        //    string code = txtQRCode.Text;
-        //    //LbSecuenciaLote.Text = code;
-        //    //LbSecuenciaLoteQR.Text = code;
-        //    QRCodeGenerator qrGenerator = new QRCodeGenerator();
-        //    QRCodeGenerator.QRCode qrCode = qrGenerator.CreateQrCode(code, QRCodeGenerator.ECCLevel.M);
-        //    System.Web.UI.WebControls.Image imgBarCode = new System.Web.UI.WebControls.Image();
-        //    try
-        //    {
-        //        if (DrPrinters.SelectedItem.Value == "2" )
-        //        {
-        //            imgBarCode.Height =150;
-        //            imgBarCode.Width = 150;
-        //        }
-        //        else if (DrPrinters.SelectedItem.Value == "6")
-        //        {
-        //            imgBarCode.Height = 250;
-        //            imgBarCode.Width = 250;
-        //        }
-        //        else
-        //        {
-        //            imgBarCode.Height = Convert.ToInt32(TxAlto.Text);
-        //            imgBarCode.Width = Convert.ToInt32(TxAncho.Text);
-        //        }
-        //    }
-        //    catch (Exception a)
-        //    {
-        //        if (DrPrinters.SelectedItem.Value == "2")
-        //        {
-        //            imgBarCode.Height = 150;
-        //            imgBarCode.Width = 150;
-        //        }
-        //        else if (DrPrinters.SelectedItem.Value == "6")
-        //        {
-        //            imgBarCode.Height = 250;
-        //            imgBarCode.Width = 250;
-        //        }
-        //        else
-        //        {
-        //            TextAlertaErr.Text = "El valor de las medidas para la imagen QR Lote no son correctas. Se establece por defecto a 300 X 300 pixeles. El Error :" + a.Message;
-        //            TxAlto.Text = "300";
-        //            TxAncho.Text = "300";
-        //            alertaErr.Visible = true;
-        //        }
-        //    }
-        //    using (Bitmap bitMap = qrCode.GetGraphic(40))
-        //    {
-        //        using (MemoryStream ms = new MemoryStream())
-        //        {
-        //            bitMap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-        //            byte[] byteImage = ms.ToArray();
-        //            imgBarCode.ImageUrl = "data:image/png;base64," + Convert.ToBase64String(byteImage);
-        //        }
-        //        if (DrPrinters.SelectedItem.Value == "1" || DrPrinters.SelectedItem.Value == "4")
-        //        {
-        //            PlaceHolder1.Controls.Add(imgBarCode);
-        //        }
-        //        if (DrPrinters.SelectedItem.Value == "2")
-        //        {
-        //            PlaceHolderQR.Controls.Add(imgBarCode);
-        //        }
-        //        if (DrPrinters.SelectedItem.Value == "3")
-        //        {
-        //            pnlContentsFT.Controls.Add(imgBarCode);
-        //        }
-        //        if (DrPrinters.SelectedItem.Value == "6")
-        //        {
-        //            PlaceHolderPaletAlv.Controls.Add(imgBarCode);
-        //        }
-        //    }
-
-        //    LbCodigoLote.Text = "CÓDIGO LOTE:";
-        //    //LbCodigoLoteQR.Text = "CÓDIGO LOTE 2:";
-        //    //Comentar en produccion
-        //    //btnGenerateTodo_Click(sender, e);
-        //}
-
-        //protected void btnGeneraTodoPerf_Click(object sender, EventArgs e)
-        //{
-        //    string code = "";
-        //    alerta.Visible = false;
-        //    alertaErr.Visible = false;
-        //    alertaLog.Visible = false;
-        //    if (DrPrinters.SelectedItem.Value == "4")
-        //    {
-        //        //code += Label6.Text + TxtVariedad.Text + Environment.NewLine;
-        //        //LbVariedadS.Text = Label6.Text + " " + TxtVariedad.Text;
-        //        code += TxtVariedad.Text + Environment.NewLine;
-        //        LbVariedadS.Text = Label6.Text + " " + TxtVariedad.Text;
-        //    }
-        //    else
-        //    {
-        //        code += LbDesde.Text + TxtDesde.Text + Environment.NewLine;
-        //        LbCampoS.Text = LbDesde.Text + " " + TxtDesde.Text;
-        //        code += Label4.Text + TxtCampo.Text + Environment.NewLine;
-        //        LbPlantaS.Text = Label4.Text + " " + TxtCampo.Text;
-        //        code += Label5.Text + TxtFecha.Text + Environment.NewLine;
-        //        code += Label6.Text + TxtVariedad.Text + Environment.NewLine;
-        //        LbVariedadS.Text = Label6.Text + " " + TxtVariedad.Text;
-        //        code += LbCajasS.Text + Environment.NewLine;
-        //        code += LbPlantasS.Text + Environment.NewLine;
-        //    }
-
-
-        //    H1Normal.Visible = false;
-        //    H1Seleccion.Visible = false;
-        //    H1Red.Visible = false;
-        //    H1Green.Visible = true;
-        //    DrPrinters_Click();
-
-        //    TextAlertaErr.Text = "";
-
-
-        //    QRCodeGenerator qrGenerator = new QRCodeGenerator();
-        //    QRCodeGenerator.QRCode qrCode = qrGenerator.CreateQrCode(code, QRCodeGenerator.ECCLevel.M);
-        //    System.Web.UI.WebControls.Image imgBarCode = new System.Web.UI.WebControls.Image();
-
-        //    try
-        //    {
-        //        imgBarCode.Height = Convert.ToInt32(TxAltoT.Text);
-        //        imgBarCode.Width = Convert.ToInt32(TxAnchoT.Text);
-        //    }
-        //    catch (Exception a)
-        //    {
-        //        TextAlertaErr.Text = "El valor de las medidas para la imagen QR Total no son correctas. Se establece por defecto a 200 X 200 pixeles. El Error :" + a.Message;
-        //        TxAltoT.Text = "200";
-        //        TxAnchoT.Text = "200";
-        //        alertaErr.Visible = true;
-        //    }
-
-        //    using (Bitmap bitMap = qrCode.GetGraphic(40))
-        //    {
-        //        using (MemoryStream ms = new MemoryStream())
-        //        {
-        //            bitMap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-        //            byte[] byteImage = ms.ToArray();
-        //            imgBarCode.ImageUrl = "data:image/png;base64," + Convert.ToBase64String(byteImage);
-        //        }
-        //        PlaceHolder2.Controls.Add(imgBarCode);
-        //    }
-        //}
-
-        //protected void btnGenerateTodo_Click(object sender, EventArgs e)
-        //{
-        //    string code = "";
-        //    string CodigoError = "";
-        //    alerta.Visible = false;
-        //    alertaErr.Visible = false;
-        //    alertaLog.Visible = false;
-
-        //    if (TxtDesde.Text == "")
-        //    {
-        //        LbCampoS.Text = "";
-        //        //LbCampoSQR.Text = "";
-        //        LbFechaS.Text = "";
-        //        //LbFechaSQR.Text = "";
-        //        LbVariedadS.Text = "";
-        //        //LbVariedadSQR.Text = "";
-        //        LbCajasS.Text = "";
-        //        //LbCajasSQR.Text = "";
-        //        LbPlantasS.Text = "";
-        //        //LbPlantasSQR.Text = "";
-        //        LbPlantaS.Text = "";
-        //        //LbPlantaSQR.Text = "";
-        //        CodigoError += " Campo o Sector,";
-        //    }
-        //    else
-        //    {
-        //        code += LbDesde.Text + TxtDesde.Text + Environment.NewLine;
-        //        LbCampoS.Text = LbDesde.Text + " " + TxtDesde.Text;
-        //        //LbCampoSQR.Text = LbDesde.Text + " " + TxtDesde.Text;
-        //    }
-
-        //    if (TxtCampo.Text == "")
-        //    {
-        //        LbCampoS.Text = "";
-        //        //LbCampoSQR.Text = "";
-        //        LbFechaS.Text = "";
-        //        //LbFechaSQR.Text = "";
-        //        LbVariedadS.Text = "";
-        //        //LbVariedadSQR.Text = "";
-        //        LbCajasS.Text = "";
-        //        //LbCajasSQR.Text = "";
-        //        LbPlantasS.Text = "";
-        //        //LbPlantasSQR.Text = "";
-        //        LbPlantaS.Text = "";
-        //        //LbPlantaSQR.Text = "";
-        //        CodigoError += " Tipo Plantas,";
-        //    }
-        //    else
-        //    {
-        //        code += Label4.Text + TxtCampo.Text + Environment.NewLine;
-        //        LbPlantaS.Text = Label4.Text + " " + TxtCampo.Text;
-        //        //LbPlantaSQR.Text = Label4.Text + " " + TxtCampo.Text;
-        //    }
-
-        //    if (TxtFecha.Text == "")
-        //    {
-        //        LbCampoS.Text = "";
-        //        //LbCampoSQR.Text = "";
-        //        LbFechaS.Text = "";
-        //        //LbFechaSQR.Text = "";
-        //        LbVariedadS.Text = "";
-        //        //LbVariedadSQR.Text = "";
-        //        LbCajasS.Text = "";
-        //        //LbCajasSQR.Text = "";
-        //        LbPlantasS.Text = "";
-        //        //LbPlantasSQR.Text = "";
-        //        LbPlantaS.Text = "";
-        //        //LbPlantaSQR.Text = "";
-        //        CodigoError += " Fecha Corte,";
-        //    }
-        //    else
-        //    {
-        //        code += Label5.Text + TxtFecha.Text + Environment.NewLine;
-        //        //LbFechaS.Text = Label5.Text + " " + TxtFecha.Text;
-
-
-        //        if (TxtFecha.Text != "")
-        //        {
-        //            LbFechaS.Text = Label5.Text + " " + TxtFecha.Text.ToString().Substring(0, 10);
-        //        }
-        //        else
-        //        {
-        //            LbFechaS.Text = Label5.Text + " " + TxtFecha.Text;
-        //        }
-        //    }
-
-        //    if (TxtVariedad.Text == "")
-        //    {
-        //        LbCampoS.Text = "";
-        //        //LbCampoSQR.Text = "";
-        //        LbFechaS.Text = "";
-        //        //LbFechaSQR.Text = "";
-        //        LbVariedadS.Text = "";
-        //        //LbVariedadSQR.Text = "";
-        //        LbCajasS.Text = "";
-        //        //LbCajasSQR.Text = "";
-        //        LbPlantasS.Text = "";
-        //        //LbPlantasSQR.Text = "";
-        //        LbPlantaS.Text = "";
-        //        //LbPlantaSQR.Text = "";
-        //        CodigoError += " Variedad,";
-        //    }
-        //    else
-        //    {
-        //        code += Label6.Text + TxtVariedad.Text + Environment.NewLine;
-        //        LbVariedadS.Text = Label6.Text + " " + TxtVariedad.Text;
-        //    }
-
-        //    if (TxtCajas.Text == "")
-        //    {
-        //        LbCampoS.Text = "";
-        //        //LbCampoSQR.Text = "";
-        //        LbFechaS.Text = "";
-        //        //LbFechaSQR.Text = "";
-        //        LbVariedadS.Text = "";
-        //        //LbVariedadSQR.Text = "";
-        //        LbCajasS.Text = "";
-        //        //LbCajasSQR.Text = "";
-        //        LbPlantasS.Text = "";
-        //        //LbPlantasSQR.Text = "";
-        //        LbPlantaS.Text = "";
-        //        //LbPlantaSQR.Text = "";
-
-        //        CodigoError += " Número Cajas,";
-        //    }
-        //    else
-        //    {
-        //        //code += Label7.Text + TxtCajas.Text + Environment.NewLine;
-        //        //LbCajasS.Text = Label7.Text + " " + TxtCajas.Text;
-        //        code += LbCajasS.Text + Environment.NewLine;
-        //        //LbCajasS.Text = Label7.Text + " " + TxtCajas.Text;
-        //    }
-
-        //    if (TxtPlantas.Text == "")
-        //    {
-        //        LbCampoS.Text = "";
-        //        //LbCampoSQR.Text = "";
-        //        LbFechaS.Text = "";
-        //        //LbFechaSQR.Text = "";
-        //        LbVariedadS.Text = "";
-        //        //LbVariedadSQR.Text = "";
-        //        LbCajasS.Text = "";
-        //        //LbCajasSQR.Text = "";
-        //        LbPlantasS.Text = "";
-        //        //LbPlantasSQR.Text = "";
-        //        LbPlantaS.Text = "";
-        //        //LbPlantaSQR.Text = "";
-        //        CodigoError += " Número Plantas,";
-        //    }
-        //    else
-        //    {
-        //        code += LbPlantasS.Text + Environment.NewLine;
-        //        //LbPlantasS.Text = LbnumeroPlantas.Text + " " + TxtPlantas.Text;
-        //        //code += LbnumeroPlantas.Text + TxtPlantas.Text + Environment.NewLine;
-        //        //LbPlantasS.Text = LbnumeroPlantas.Text + " " + TxtPlantas.Text;
-        //    }
-
-        //    if (DrPrinters.SelectedItem.Value == "6")
-        //    {
-        //        code = TxtVariedad.Text; // + Environment.NewLine;
-        //    }
-
-
-        //    //if (CodigoError != "")
-        //    //{
-        //    //    //No se puede generar el código QR total por tener los campos siguientes vacios: CodigoError
-        //    //    TextAlertaErr.Text = "No se puede generar el código QR total por tener los campos siguientes vacios: " + CodigoError;
-        //    //    TextAlertaErr.Text += "Genere un registro desde formularios de Scan-IT desde el Móvil, envielo y pruebe nuevamente desde este botón. " + CodigoError;
-        //    //    TextAlerta.Text = "";
-        //    //    alertaErr.Visible = true;
-        //    //    btnPrint2.Visible = false;
-        //    //    //BTerminado.Visible = false;
-        //    //    //btProcesa.Visible = true;
-        //    //    return;
-        //    //}
-        //    //else
-        //    //{
-        //        H1Normal.Visible = false;
-        //        H1Seleccion.Visible = false;
-        //        H1Red.Visible = false;
-        //        H1Green.Visible = true;
-        //        DrPrinters_Click();
-
-        //        //HLoteProceso.InnerText = "Código QR PROCESADO";
-        //        //HLoteProceso.Attributes.Add("style", "color: LimeGreen; font-weight:bold;");
-
-        //        //TextAlerta.Text = "Ahora puedes imprimir el código QR para el palet.";
-        //        TextAlertaErr.Text = "";
-        //        //alerta.Visible = true;
-        //        //btnPrint2.Visible = true;
-        //        //btProcesa.Visible = false;
-        //        //BTerminado.Visible = true;
-        //    //}
-        //    QRCodeGenerator qrGenerator = new QRCodeGenerator();
-        //    QRCodeGenerator.QRCode qrCode = qrGenerator.CreateQrCode(code, QRCodeGenerator.ECCLevel.M);
-        //    System.Web.UI.WebControls.Image imgBarCode = new System.Web.UI.WebControls.Image();
-
-        //    try
-        //    {
-        //        if (DrPrinters.SelectedItem.Value == "6")
-        //        {
-        //            imgBarCode.Height = 100;
-        //            imgBarCode.Width = 100;
-        //        }
-        //        else
-        //        {
-        //            imgBarCode.Height = Convert.ToInt32(TxAltoT.Text);
-        //            imgBarCode.Width = Convert.ToInt32(TxAnchoT.Text);
-        //        }
-
-        //    }
-        //    catch (Exception a)
-        //    {
-        //        TextAlertaErr.Text = "El valor de las medidas para la imagen QR Total no son correctas. Se establece por defecto a 200 X 200 pixeles. El Error :" + a.Message;
-        //        TxAltoT.Text = "200";
-        //        TxAnchoT.Text = "200";
-        //        alertaErr.Visible = true;
-        //    }
-
-        //    using (Bitmap bitMap = qrCode.GetGraphic(40))
-        //    {
-        //        using (MemoryStream ms = new MemoryStream())
-        //        {
-        //            bitMap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-        //            byte[] byteImage = ms.ToArray();
-        //            imgBarCode.ImageUrl = "data:image/png;base64," + Convert.ToBase64String(byteImage);
-        //        }
-
-        //        //if (DrPrinters.SelectedItem.Value == "1")
-        //        //{
-        //        //PlaceHolder2.Controls.Add(imgBarCode);
-        //        //}
-        //        //if (DrPrinters.SelectedItem.Value == "2")
-        //        //{
-        //        //    PlaceHolderQR.Controls.Add(imgBarCode);
-        //        //}
-        //        //if (DrPrinters.SelectedItem.Value == "3")
-        //        //{
-        //        //    pnlContentsFT.Controls.Add(imgBarCode);
-        //        //}
-        //        if (DrPrinters.SelectedItem.Value == "6")
-        //        {
-
-        //            PlaceHolderPaletAlvMin.Controls.Add(imgBarCode);
-        //        }
-        //        else
-        //        {
-        //            PlaceHolder2.Controls.Add(imgBarCode);
-        //        }
-        //    }
-        //}
-
-        private void BuscaDuplicados()
-        {
-
-        }
-        private void LimpiaCajas()
-        {
-            try
-            {
-                //txtQRCode.Text = "";
-                //TxtCampo.Text = "";
-                //TxtFecha.Text = "";
-                //TxtVariedad.Text = "";
-                //TxtCajas.Text = "";
-                //TxtPlantas.Text = "";
-                //LbCampoS.Text = "";
-                //LbFechaS.Text = "";
-                //LbPlantaS.Text = "";
-                //LbVariedadS.Text = "";
-                //LbCajasS.Text = "";
-                //LbPlantasS.Text = "";
-                //Lbcompleto.Text = "";
-                //LbSecuenciaLote.Text = "";
-                //LbSecuenciaLoteQR.Text = "";
-                //TxtEstado.Text = "";
-                //TxtDispositivo.Text = "";
-                //TxtLoteDestino.Text = "";
-
-                //LbCodeQRPalteAlv.Text = "";
-                //LbTipoPlantaP.Text = "";
-                //LbVariedadP.Text = "";
-                //LbVariedadS.Text = "";
-                //lbUnidadesP.Text = "";
-                //lbNumPlantasP.Text = "";
-
-                //TxtID.Text = "";
-                //TxtForm.Text = "";
-                //TxtManojos.Text = "";
-                //TxtDesde.Text = "";
-                //TxtHasta.Text = "";
-                //TxtETDesde.Text = "";
-                //TxtETHasta.Text = "";
-                //TxtTuneles.Text = "";
-                //TxtPasillos.Text = "";
-                //TxtObservaciones.Text = "";
-                //TxtOK.Text = "";
-                //LbCodigoLote.Text = "SIN CÓDIGO LOTE";
-            }
-            catch (NullReferenceException ex)
-            {
-                Lberror.Text += ex.Message;
-            }
-        }
-
-        protected void btnRestoreTodo_Click(object sender, EventArgs e)
-        {
-            alerta.Visible = false;
-            alertaErr.Visible = false;
-            alertaLog.Visible = false;
-            BTerminado.Visible = false;
-            Btfin.Visible = false;
-            //if (LbIDLote.Text == "") { return; }
-            string SQL = "";
-
-            DataTable dt3 = Main.CargaSCANform().Tables[0];
-
-            foreach (DataRow fila in dt3.Rows)
-            {
-                if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
-                {
-                    SQL = "UPDATE ZENTRADA SET ESTADO = '0' ";
-                    SQL += " WHERE ESTADO <> '2'";
-                    DBHelper.ExecuteNonQuery(SQL);
-                    break;
-                }
-
-                if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-                {
-                    SQL = "UPDATE ZENTRADA SET ESTADO = '0' ";
-                    SQL += " WHERE TIPO_FORM = '" + fila["ZTITULO"].ToString() + "'";
-                    SQL += " AND ESTADO <> '2'";
-                    DBHelper.ExecuteNonQuery(SQL);
-                    break;
-                }
-            }
-
-            Carga_Lotes(this.Session["IDSecuencia"].ToString());
-            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
-
-            //BtFinalizalote.Text = "Finaliza este Lote";
-            //BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
-            //BtFinalizalote.Enabled = false;
-            if (DrVariedad.SelectedItem.Value == "5")
-            {
-                BtEnviaFinalizados.Enabled = false;
-            }
-            else
-            {
-                BtEnviaFinalizados.Enabled = true;
-            }
-            //BtEnviaFinalizados.Enabled = true;
-
-        }
-
-
-
-        protected void btnRestore_Click(object sender, EventArgs e)
-        {
-            alerta.Visible = false;
-            alertaErr.Visible = false;
-            alertaLog.Visible = false;
-            BTerminado.Visible = false;
-            Btfin.Visible = false;
-            //if(LbIDLote.Text == "") { return; }
-            string SQL = "UPDATE ZENTRADA  SET ESTADO = '0' ";
-            SQL += " WHERE ID = " + LbIDLote.Text;
-            //DBHelper.ExecuteNonQuery(Variables.tipo, SQL, Variables.Miconexion, Variables.nomenclatura + "ZSECUENCIAS ");
-            DBHelper.ExecuteNonQuery(SQL);
-            //Btfin.Visible = true;
-            //BTerminado.Visible = false;
-
-            Carga_Lotes(this.Session["IDSecuencia"].ToString());
-            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
-
-            //BtFinalizalote.Text = "Finaliza este Lote";
-            //BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
-            //BtFinalizalote.Enabled = false;
-            if (DrVariedad.SelectedItem.Value == "5")
-            {
-                BtEnviaFinalizados.Enabled = false;
-            }
-            else
-            {
-                BtEnviaFinalizados.Enabled = true;
-            }
-            //BtEnviaFinalizados.Enabled = true;
-
-        }
-
-
-        protected void DrDuplicados_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            //BuscaLote(string SQL)
-
-        }
-
-        protected void DrVariedad_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            alerta.Visible = false;
-            alertaErr.Visible = false;
-            alertaLog.Visible = false;
-
-            DataTable dt = Main.CargaSCANform().Tables[0];
-
-
-
-            //try
-            //{
-            if (dt == null)
-            {
-                DataTable dt3 = Main.CargaSCANform().Tables[0];
-
-                foreach (DataRow fila in dt3.Rows)
-                {
-                    if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
-                    {
-                        this.Session["IDSecuencia"] = "1,2,3,4,5,6";
-
-                        this.Session["IDProcedimiento"] = "0";
-                        dtEntrada_SelectedIndexChanged(null, null);
-                        //Carga_Lotes(); // this.Session["IDSecuencia"].ToString());
-                        break;
-                    }
-
-                    if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-                    {
-                        this.Session["IDSecuencia"] = fila["ZSECUENCIAS"].ToString();
-
-                        dtEntrada_SelectedIndexChanged(null, null);
-                        //Carga_Lotes(); // this.Session["IDSecuencia"].ToString());
-                        this.Session["IDProcedimiento"] = fila["ZID_PROCEDIMIENTO"].ToString();
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                foreach (DataRow fila in dt.Rows)
-                {
-                    if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
-                    {
-                        this.Session["IDSecuencia"] = "1,2,3,4,5,6";
-
-                        dtEntrada_SelectedIndexChanged(null, null);
-                        //Carga_Lotes(); 
-                        this.Session["IDProcedimiento"] = "0";
-                        break;
-                    }
-                    string miro = fila["ZID"].ToString();
-                    if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-                    {
-                        this.Session["IDSecuencia"] = fila["ZSECUENCIAS"].ToString();
-                        dtEntrada_SelectedIndexChanged(null, null);
-                        //Carga_Lotes(); 
-                        this.Session["IDProcedimiento"] = fila["ZID_PROCEDIMIENTO"].ToString();
-                        break;
-                    }
-                }
-            }
-        }
-
-
-        //protected void DrVariedad_SelectedIndexChanged(object sender, EventArgs e)
-        //{
-        //    alerta.Visible = false;
-        //    alertaErr.Visible = false;
-        //    alertaLog.Visible = false;
-        //    txtQRCodebis.Visible = false;
-        //    txtQRCode.Visible = true;
-
-        //    LimpiaCajas();
-        //    btnCancelaLote_Click(sender, e);
-        //    DataTable dt = Main.CargaSCANform().Tables[0];
-        //    Boolean Esta = false;
-        //    H1Normal.Visible = false;
-        //    H1Seleccion.Visible = false;
-        //    H1Red.Visible = false;
-        //    H1Green.Visible = false;
-        //    BtnLanzaPro.Visible = false;
-        //    BTerminado.Visible = false;
-        //    Btfin.Visible = false;
-
-        //    try
-        //    {
-        //        if (dt == null)
-        //        {
-        //            DataTable dt3 = Main.CargaSCANform().Tables[0];
-        //            foreach (DataRow fila in dt3.Rows)
-        //            {
-        //                if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-        //                {
-        //                    this.Session["IDSecuencia"] = fila["ZID"].ToString();
-        //                    Carga_Lotes(fila["ZID"].ToString());
-        //                    //if (fila["ZID"].ToString().ToString() == "1" || fila["ZID"].ToString().ToString() == "3")
-        //                    //{
-        //                    //    BtnLanzaPro.Visible = true;
-        //                    //}
-
-        //                    if (fila["ZDESCRIPCION"].ToString() == "Seleccione un tipo de lote...")
-        //                    {
-        //                        LbCodigoLote.Text = "SIN CÓDIGO LOTE";
-        //                        txtQRCode.Text = "Seleccione un Tipo de Lote";
-        //                        txtQRCodebis.Text = "Seleccione un Tipo de Lote";
-        //                        txtQRCodebis.Visible = true;
-        //                        txtQRCode.Visible = false;
-        //                        Esta = true;
-        //                    }
-        //                    else
-        //                    {
-        //                        LbCodigoLote.Text = "CÓDIGO LOTE:";
-        //                        txtQRCode.Text = "Seleccione de listas QR";
-        //                        txtQRCodebis.Text = "Seleccione de listas QR";
-        //                        txtQRCodebis.Visible = true;
-        //                        txtQRCode.Visible = false;
-
-        //                        Esta = true;
-        //                    }
-
-        //                    if(Esta == false)
-        //                    {
-        //                        txtQRCode.Text = "Seleccione un Tipo de Lote";
-        //                        txtQRCodebis.Text = "Seleccione un Tipo de Lote";
-        //                        txtQRCodebis.Visible = true;
-        //                        txtQRCode.Visible = false;
-
-        //                    }
-        //                    break;
-        //                }
-        //            }
-        //        }
-        //        else
-        //        {
-        //            foreach (DataRow fila in dt.Rows)
-        //            {
-        //                if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-        //                {
-        //                    this.Session["IDSecuencia"] = fila["ZID"].ToString();
-        //                    Carga_Lotes(fila["ZID"].ToString());
-
-        //                    //if (fila["ZID"].ToString().ToString() == "1" || fila["ZID"].ToString().ToString() == "3")
-        //                    //{
-        //                    //    BtnLanzaPro.Visible = true;
-        //                    //}
-
-        //                    if (fila["ZDESCRIPCION"].ToString() == "Seleccione un tipo de lote...")
-        //                    {
-        //                        LbCodigoLote.Text = "SIN CÓDIGO LOTE";
-        //                        txtQRCode.Text = "Seleccione un Tipo de Lote";
-        //                        txtQRCodebis.Text = "Seleccione un Tipo de Lote";
-        //                        txtQRCodebis.Visible = true;
-        //                        txtQRCode.Visible = false;
-        //                        Esta = true;
-        //                    }
-        //                    else
-        //                    {
-        //                        LbCodigoLote.Text = "CÓDIGO LOTE:";
-        //                        txtQRCode.Text = "Seleccione de listas QR";
-        //                        txtQRCodebis.Text = "Seleccione de listas QR";
-        //                        txtQRCodebis.Visible = true;
-        //                        txtQRCode.Visible = false;
-        //                        Esta = true;
-        //                    }
-
-
-        //                    break;
-        //                }
-        //            }
-        //        }
-        //    }
-        //    catch(Exception Ex)
-        //    {
-        //        alertaErr.Visible = true;
-        //        TextAlertaErr.Text = Ex.Message;
-        //    }
-        //    H1Normal.Visible = true;
-
-        //    if (Esta == false)
-        //    {
-        //        txtQRCode.Text = "Seleccione un Tipo de Lote";
-        //        txtQRCodebis.Text = "Seleccione un Tipo de Lote";
-        //        txtQRCodebis.Visible = true;
-        //        txtQRCode.Visible = false;
-        //    }
-
-        //    //try
-        //    //{
-
-        //    //    DataTable dt = Main.CargaSecuencia().Tables[0];
-
-        //    //    //DataTable dt = this.Session["Secuencias"] as DataTable;
-        //    //    //if (dt == null)
-        //    //    //{
-        //    //    //    DataTable dt3 = Main.CargaSecuencia().Tables[0];
-        //    //    //    foreach (DataRow fila in dt3.Rows)
-        //    //    //    {
-        //    //    //        if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-        //    //    //        {
-
-        //    //    //            if (fila["ZDESCRIPCION"].ToString() == "Seleccione un tipo de lote...")
-        //    //    //            {
-        //    //    //                btNew.Enabled = false;
-        //    //    //                LbCodigoLote.Text = "SIN CÓDIGO LOTE";
-        //    //    //            }
-        //    //    //            else
-        //    //    //            {
-        //    //    //                GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
-        //    //    //                btNew.Enabled = true;
-        //    //    //                LbCodigoLote.Text = "CÓDIGO LOTE:";
-        //    //    //                Carga_Lotes();
-        //    //    //            }
-        //    //    //            break;
-        //    //    //        }
-        //    //    //    }
-        //    //    //}
-        //    //    //else
-        //    //    //{
-        //    //    Esta = false;
-        //    //    foreach (DataRow fila in dt.Rows)
-        //    //    {
-        //    //        if (fila["ZID"].ToString() == DrVariedad.SelectedItem.Value)
-        //    //        {
-        //    //            this.Session["IDSecuencia"] = fila["ZID"].ToString();
-
-        //    //            if (fila["ZDESCRIPCION"].ToString() == "Seleccione un tipo de lote...")
-        //    //            {
-        //    //                //lbBuscaCod.Text = "Códigos QR:";
-        //    //                //btNew.Enabled = false;
-        //    //                Esta = false;
-        //    //                LbCodigoLote.Text = "SIN CÓDIGO LOTE";
-        //    //            }
-        //    //            else
-        //    //            {
-        //    //                //lbBuscaCod.Text = "Códigos QR con Tipo Lote " + fila["ZDESCRIPCION"].ToString() + ":";
-        //    //                //lbBuscaCod.Text = "Códigos QR:";
-        //    //                GeneraSecuencia(fila["ZMASCARA"].ToString(), fila["ZSECUENCIA"].ToString());
-        //    //                //btNew.Enabled = false;
-        //    //                LbCodigoLote.Text = "CÓDIGO LOTE:";
-        //    //                Esta = true;
-        //    //                Carga_Lotes(fila["ZID"].ToString());
-        //    //                H1Normal.Visible = false;
-        //    //                H1Seleccion.Visible = true;
-        //    //                H1Red.Visible = false;
-        //    //                H1Green.Visible = false;
-        //    //            }
-
-        //    //            break;
-        //    //        }
-        //    //    }
-        //    //    if (Esta == false)
-        //    //    {
-        //    //        //btNew.Enabled = false;
-        //    //        //BTerminado.Visible = false;
-        //    //        LbSecuenciaLote.Text = "";
-        //    //        LbCodigoLote.Text = "SIN CÓDIGO LOTE";
-        //    //        txtQRCode.Text = "";
-        //    //        alerta.Visible = false;
-        //    //        alertaErr.Visible = false;
-        //    //        alertaLog.Visible = false;
-        //    //        LbCampoS.Text = "";
-        //    //        LbFechaS.Text = "";
-        //    //        LbPlantaS.Text = "";
-        //    //        LbVariedadS.Text = "";
-        //    //        LbCajasS.Text = "";
-        //    //        LbPlantasS.Text = "";
-        //    //        TxtCampo.Text = "";
-        //    //        TxtFecha.Text = "";
-        //    //        TxtVariedad.Text = "";
-        //    //        TxtCajas.Text = "";
-        //    //        TxtPlantas.Text = "";
-        //    //        DrLotes.Items.Clear();
-        //    //        LbDuplicados.Text = "No";
-        //    //        LbDuplicados.ForeColor = Color.Black;
-
-        //    //        H1Normal.Visible = true;
-        //    //        H1Seleccion.Visible = false;
-        //    //        H1Red.Visible = false;
-        //    //        H1Green.Visible = false;
-        //    //        //lbBuscaCod.Text = "Códigos QR:";
-        //    //    }
-
-        //    //}
-        //    //catch (NullReferenceException ex)
-        //    //{
-        //    //    Lberror.Text += ex.Message;
-        //    //    //alerta.Visible = true;
-        //    //    //TextAlertaErr.Text = ex.Message;
-        //    //}
-        //    //}
-        //}
-
-        protected void BtFinalizalote_Click(object sender, EventArgs e)
-        {
-            alerta.Visible = false;
-            alertaErr.Visible = false;
-            alertaLog.Visible = false;
-            BTerminado.Visible = false;
-            Btfin.Visible = false;
-
-            string SQL = "UPDATE ZENTRADA  SET ESTADO = '1' ";
-            SQL += " WHERE ID = " + LbIDLote.Text;
-            //DBHelper.ExecuteNonQuery(Variables.tipo, SQL, Variables.Miconexion, Variables.nomenclatura + "ZSECUENCIAS ");
-            DBHelper.ExecuteNonQuery(SQL);
-            //Btfin.Visible = true;
-            //BTerminado.Visible = false;
-            //btnGenerate_Click(sender, e);
-            //if (DrPrinters.SelectedItem.Value == "4")
-            //{
-            //    btnGeneraTodoPerf_Click(sender, e);
-            //}
-            //else 
-            //{
-            //    btnGenerateTodo_Click(sender, e);
-            //}
-
-            Carga_Lotes(this.Session["IDSecuencia"].ToString());
-            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
-
-            //BtFinalizalote.Text = "Lote Finalizado";
-            //BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
-            //BtFinalizalote.Enabled = false;
-            if (DrVariedad.SelectedItem.Value == "5")
-            {
-                BtEnviaFinalizados.Enabled = false;
-            }
-            else
-            {
-                BtEnviaFinalizados.Enabled = true;
-            }
-            //BtEnviaFinalizados.Enabled = true;
-
-        }
-
-        protected void BtFinalizaTodos_Click(object sender, EventArgs e)
-        {
-
-            alerta.Visible = false;
-            alertaErr.Visible = false;
-            alertaLog.Visible = false;
-            //BTerminado.Visible = false;
-            //Btfin.Visible = false;
-            string SQL = "";
-            Boolean esta = false;
-
-            if (DrVariedad.SelectedItem.Text == "Todos los Formularios")
-            {
-                //Muestra Mensaje jose
-                Lbmensaje.Text = "No se finalizaran Lotes si no selecciona un Formulario";
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-                return;
-            }
-            else
-            {
-
-                foreach (GridViewRow row in gvEntrada.Rows)
-                {
-                    CheckBox check = row.FindControl("chbItem") as CheckBox;
-
-                    if (check.Checked)
-                    {
-                        string code = gvEntrada.DataKeys[row.RowIndex].Values[0].ToString();     //get datakey
-                        SQL = " UPDATE ZENTRADA SET ESTADO = '1' WHERE ID = " + code;
-                        DBHelper.ExecuteNonQuery(SQL);
-                        esta = true;
-                    }
-                }
-            }
-            if (esta == false)
-            {
-                Lbmensaje.Text = "No hay Lotes seleccionados para finalizar.";
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-            }
-
-
-            Carga_Lotes();
-
-            if (DrVariedad.SelectedItem.Value == "5")
-            {
-                BtEnviaFinalizados.Enabled = false;
-            }
-            else
-            {
-                BtEnviaFinalizados.Enabled = true;
-            }
-
-
-        }
-
-        protected void BtEnviaFinalizados_Click(object sender, EventArgs e)
-        {
-            //Procedimientos Gold
-            //Prepara los check para no importar aquellos que no esten seleccionados
-
-            //CheckBox ChkBoxRows = (CheckBox)row.FindControl("chbItem");
-            //if (ChkBoxHeader.Checked == true)
-            //{
-            //    ChkBoxRows.Checked = true;
-            //}
-            //else
-            //{
-            //    ChkBoxRows.Checked = false;
-            //}
-            //if (dtEntrada.SelectedItem.Value == "4")
-            //{
-            //    row.BackColor = Color.FromName("#ff7e62");
-            //}
-
-            // Carga_Lotes2("1");
-            Variables.mensajeserver = "";
-
-            //if (this.Session["IDSecuencia"].ToString() == "")
-            //{
-            //    Lbmensaje.Text = "Este Formulario no tiene configurada ninguna Secuencia en su Tabla para enviar a GoldenSoft.";
-            //    cuestion.Visible = false;
-            //    Asume.Visible = true;
-            //    windowmessaje.Visible = true;
-            //    return;
-            //}
-
-            if (DrVariedad.SelectedItem.Value == "Todos los Formularios")
-            {
-                Lbmensaje.Text = "Debe seleccionar un tipo de Formulario para poder agrupar sus Lotes y enviar a GoldenSoft.";
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-                return;
-            }
-
-            foreach (GridViewRow row in gvEntrada.Rows)
-            {
-                CheckBox check = row.FindControl("chbItem") as CheckBox;
-
-                if (check.Checked == true)
-                {
-                    //string code = "Migrar";
-                }
-                else
-                {
-                    string code = gvEntrada.DataKeys[row.RowIndex].Values[0].ToString();
-                    string SQL = "UPDATE ZENTRADA  SET ESTADO = -(CONVERT(int,ESTADO)) ";
-                    SQL += " WHERE ID = " + code;
-                    DBHelper.ExecuteNonQuery(SQL);
-                }
-                //check.Checked = false;
-            }
-
-            //Elimina_Procesados(); crea un historico y libera la tabla
-
-            // Para todos ExecuteNQProcedureAll
-            //Unificar con TABLA PROCEDIMIENTOS
-
-            string miro = this.Session["IDProcedimiento"].ToString();
-
-            //ProdTip
-            if (this.Session["IDProcedimiento"].ToString() == "2")
-            {
-                try
-                {
-                    DBHelper.ExecuteNonQueryProcedure("");
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " ExecuteNonQueryProcedure -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    string a = Main.Ficherotraza(" ExecuteNonQueryProcedure --> " + ex.Message);
-                    MiCloseMenu();
-                    return;
-                }
-
-                try
-                {
-                    DBHelper.MigraProcedure("");
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " MigraProcedure -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    string a = Main.Ficherotraza(" MigraProcedure --> " + ex.Message);
-                    MiCloseMenu();
-                    return;
-                }
-
-                //alerta.Visible = true;
-                //TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                //Variables.mensajeserver = "";
-                Lbmensaje.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-                //BtnLanzaPro.Visible = false;
-                //}
-            }
-            //PinchAlv, PinchAlvCab, PinchAlvLin
-            else if (this.Session["IDProcedimiento"].ToString() == "3")
-            {
-                try
-                {
-                    DBHelper.ExecuteNonQueryProcedurePinch("");
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " ExecuteNonQueryProcedurePinch -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    string a = Main.Ficherotraza(" ExecuteNonQueryProcedurePinch --> " + ex.Message);
-                    MiCloseMenu();
-                    return;
-                }
-
-                try
-                {
-                    DBHelper.MigraProcedurePinchAlb("");
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " MigraProcedurePinchAlb -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    string a = Main.Ficherotraza(" MigraProcedurePinchAlb --> " + ex.Message);
-                    MiCloseMenu();
-                    return;
-                }
-
-                //alerta.Visible = true;
-                //TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                //Variables.mensajeserver = "";
-                Lbmensaje.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-                //BtnLanzaPro.Visible = false;
-                //
-            }
-            //ModAlv
-            else if (this.Session["IDProcedimiento"].ToString() == "1")
-            {
-                try
-                {
-                    DBHelper.ExecuteNonQueryProcedureModAlv("");
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " ExecuteNonQueryProcedureModAlv -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza(" ExecuteNonQueryProcedureModAlv --> " + ex.Message);
-                    return;
-                }
-
-                try
-                {
-                    DBHelper.MigraProcedureModAlv("");
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " MigraProcedureModAlv -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza(" MigraProcedureModAlv --> " + ex.Message);
-                    return;
-                }
-                //alerta.Visible = true;
-                //TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                //Variables.mensajeserver = "";
-                Lbmensaje.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-
-                //BtnLanzaPro.Visible = false;
-                //}
-            }
-            //PaletAlv
-            else if (this.Session["IDProcedimiento"].ToString() == "4")
-            {
-                try
-                {
-                    DBHelper.ExecuteNonQueryProcedurePaletAlv("");
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " ExecuteNonQueryProcedurePaletAlv -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    string a = Main.Ficherotraza(" ExecuteNonQueryProcedurePaletAlv --> " + ex.Message);
-                    MiCloseMenu();
-                    return;
-                }
-
-                try
-                {
-                    DBHelper.MigraProcedurePaletAlv("");
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " MigraProcedurePaletAlv -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    string a = Main.Ficherotraza(" MigraProcedurePaletAlv --> " + ex.Message);
-                    MiCloseMenu();
-                    return;
-                }
-                //alerta.Visible = true;
-                //TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                //Variables.mensajeserver = "";
-                Lbmensaje.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-                //BtnLanzaPro.Visible = false;
-                //}
-            }
-            //Ventas
-            else if (this.Session["IDProcedimiento"].ToString() == "5")
-            {
-                try
-                {
-                    TextAlerta.Text += "Ejecuta ENTRADA_VENTAS";
-                    DBHelper.MigraProcedureVentas("");
-                    TextAlerta.Text += Variables.mensajeserver;
-                    //DBHelper.ExecuteNonQueryProcedureVenta("");
-
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlerta.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " MigraProcedureVentas -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    string a = Main.Ficherotraza(" MigraProcedureVentas --> " + ex.Message);
-                    MiCloseMenu();
-                    return;
-                }
-
-                try
-                {
-                    //consulta de ventas todos a 1
-                    TextAlerta.Text += "Ejecuta Procedimiento";
-                    DBHelper.ExeNonQueryProcMovVentas("");
-                    TextAlerta.Text += Variables.mensajeserver;
-                    //                 
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlerta.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " ExeNonQueryProcMovVentas -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza(" ExeNonQueryProcMovVentas --> " + ex.Message);
-                    return;
-                }
-
-
-
-                try
-                {
-                    TextAlerta.Text += "Ejecuta migra IMPVENTA a la 80";
-                    DBHelper.MigraProcedureVenta("");
-                    TextAlerta.Text += Variables.mensajeserver;
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text += Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " MigraProcedureVenta -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza("MigraProcedureVenta --> " + ex.Message);
-                    return;
-                }
-
-                try
-                {
-                    TextAlerta.Text += "Ejecuta migra IMPVENTADEP a la 80";
-                    DBHelper.MigraProcedureVentaDEP("");
-                    TextAlerta.Text += Variables.mensajeserver;
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text += Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text += Variables.mensajeserver + " MigraProcedureVentaDEP -> " + ex.Message;
-                    cuestion.Visible = false;
-                    Asume.Visible = true;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza("MigraProcedureVentaDEP --> " + ex.Message);
-                    return;
-                }
-
-
-
-
-                //alerta.Visible = true;
-                //TextAlerta.Text += "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                ////TextAlertaErr.Text += "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                //Variables.mensajeserver = "";
-                ////Buscar error
-                //alerta.Visible = true;
-                ////BtnLanzaPro.Visible = false;
-                ////}
-            }
-            //Frigo 
-            else if (this.Session["IDProcedimiento"].ToString() == "6")
-            {
-                try
-                {
-                    DBHelper.ExecuteNonQueryProcedureFrigo("");
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-                    Lbmensaje.Text = "Error: " + ex.Message;
-                    cuestion.Visible = true;
-                    Asume.Visible = false;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza("ExecuteNonQueryProcedureFrigo --> " + ex.Message);
-                    return;
-                }
-
-                try
-                {
-                    DBHelper.MigraProcedureFrigo("");
-                }
-                catch (Exception ex)
-                {
-                    //alertaErr.Visible = true;
-                    //TextAlertaErr.Text = Variables.mensajeserver + " -> " + ex.Message;
-                    //Variables.mensajeserver = "";
-
-                    Lbmensaje.Text = "Error: " + ex.Message;
-                    cuestion.Visible = true;
-                    Asume.Visible = false;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza("MigraProcedureFrigo --> " + ex.Message);
-                    return;
-                }
-                //alerta.Visible = true;
-                //TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                //Variables.mensajeserver = "";
-                Lbmensaje.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-                //BtnLanzaPro.Visible = false;
-                //}
-            }
-            //Plantacion
-            else if (this.Session["IDProcedimiento"].ToString() == "7")
-            {
-                try
-                {
-                    DBHelper.ExecuteNonQueryProcedurePlantacion("");
-                }
-                catch (Exception ex)
-                {
-                    Lbmensaje.Text = "Error: " + ex.Message;
-                    cuestion.Visible = true;
-                    Asume.Visible = false;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza("ExecuteNonQueryProcedurePlantacion --> " + ex.Message);
-                    return;
-                }
-
-                try
-                {
-                    DBHelper.MigraProcedurePlantacion("");
-                }
-                catch (Exception ex)
-                {
-                    Lbmensaje.Text = "Error: " + ex.Message;
-                    cuestion.Visible = true;
-                    Asume.Visible = false;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza("MigraProcedurePlantacicion --> " + ex.Message);
-                    return;
-                }
-                Lbmensaje.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-            }
-            //Compra
-            else if (this.Session["IDProcedimiento"].ToString() == "8")
-            {
-                try
-                {
-                    DBHelper.ExecuteNonQueryProcedureCompra("");
-                }
-                catch (Exception ex)
-                {
-                    Lbmensaje.Text = "Error: " + ex.Message;
-                    cuestion.Visible = true;
-                    Asume.Visible = false;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza("ExecuteNonQueryProcedureCompra --> " + ex.Message);
-                    return;
-                }
-
-                try
-                {
-                    DBHelper.MigraProcedureCompras("");
-                }
-                catch (Exception ex)
-                {
-                    Lbmensaje.Text = "Error: " + ex.Message;
-                    cuestion.Visible = true;
-                    Asume.Visible = false;
-                    windowmessaje.Visible = true;
-                    MiCloseMenu();
-                    string a = Main.Ficherotraza("MigraProcedureCompras --> " + ex.Message);
-                    return;
-                }
-                Lbmensaje.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text;
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-            }
-
-            else
-            {
-                //Si no tiene asignado un numero de procedimiento o numero de secuencias en Formulario
-                //alerta.Visible = true;
-                //TextAlerta.Text += "No se contempla el envio de esta información a GoldenSoft. Deberá seleccionar un formulario la lista de Formularios.";
-                //Variables.mensajeserver = "";
-                Lbmensaje.Text = "Error de configuración en Tabla de este Formulario para el Procedimiento '" + this.Session["IDProcedimiento"].ToString() + "' y la Secuencias '" + this.Session["IDSecuencia"].ToString() +  "' para enviar información a GoldenSoft.";
-                cuestion.Visible = false;
-                Asume.Visible = true;
-                windowmessaje.Visible = true;
-                MiCloseMenu();
-                return;
-            }
-
-            //deja los check con el estado como estaban de aquellos que no estan seleccionados Carga_Lotes
-            int M = 0;
-            foreach (GridViewRow row in gvEntrada.Rows)
-            {
-                CheckBox check = row.FindControl("chbItem") as CheckBox;
-                if (check.Checked == false)
-                {
-
-                    string code = gvEntrada.DataKeys[row.RowIndex].Values[0].ToString();
-                    string SQL = "UPDATE ZENTRADA  SET ESTADO = (CONVERT(int,ESTADO)) * -1 ";
-                    SQL += " WHERE ID = " + code;
-                    DBHelper.ExecuteNonQuery(SQL);
-                }
-                else
-                {
-                    string code = gvEntrada.DataKeys[row.RowIndex].Values[0].ToString();
-                    string SQL = "UPDATE ZENTRADA  SET ESTADO = 2 ";
-                    SQL += " WHERE ID = " + code;
-                    DBHelper.ExecuteNonQuery(SQL);
-                    M += 1;
-                }
-            }
-
-
-            //if (TxtID.Text == "")
-            //{ }
-            //else
-            //{
-            //btnGenerate_Click(sender, e);
-            //if (DrPrinters.SelectedItem.Value == "4")
-            //{
-            //    btnGeneraTodoPerf_Click(sender, e);
-            //}
-            //else
-            //{
-            //    btnGenerateTodo_Click(sender, e);
-            //}
-            //}
-            
-            //Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
-            //Carga_Lotes(); // this.Session["IDSecuencia"].ToString());
-
-            //alerta.Visible = true;
-            //TextAlerta.Text = "Los datos están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text + Environment.NewLine; // + TextAlerta.Text;
-            if (M == 0)
-            {
-                Lbmensaje.Text = "No tiene seleccionado ningún Lote.";
-            }
-            else if (M == 1)
-            {
-                Lbmensaje.Text = "Los datos de " + M + " Lote están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text + Environment.NewLine;
-            }
-            else if (M > 1)
-            {
-                Lbmensaje.Text = "Los datos de " + M + " Lotes están en la tabla de GoldenSoft preparados para importar desde su aplicación en " + DrVariedad.SelectedItem.Text + Environment.NewLine;
-            }
-            cuestion.Visible = false;
-            Asume.Visible = true;
-            windowmessaje.Visible = true;
-            MiCloseMenu();
-        }
-
-        //fichero bat para habilitar todos los puertos de SQL SERVER
-        //@echo =========  SQL Server Ports  ===================
-        //       @echo Enabling SQLServer default instance port 1433
-        //       netsh firewall set portopening TCP 1433 "SQLServer"
-        //       @echo Enabling Dedicated Admin Connection port 1434
-        //       netsh firewall set portopening TCP 1434 "SQL Admin Connection"
-        //       @echo Enabling conventional SQL Server Service Broker port 4022
-        //       netsh firewall set portopening TCP 4022 "SQL Service Broker"
-        //       @echo Enabling Transact-SQL Debugger/RPC port 135
-        //       netsh firewall set portopening TCP 135 "SQL Debugger/RPC"
-        //       @echo =========  Analysis Services Ports  ==============
-        //       @echo Enabling SSAS Default Instance port 2383
-        //       netsh firewall set portopening TCP 2383 "Analysis Services"
-        //       @echo Enabling SQL Server Browser Service port 2382
-        //       netsh firewall set portopening TCP 2382 "SQL Browser"
-        //       @echo =========  Misc Applications  ==============
-        //       @echo Enabling HTTP port 80
-        //       netsh firewall set portopening TCP 80 "HTTP"
-        //       @echo Enabling SSL port 443
-        //       netsh firewall set portopening TCP 443 "SSL"
-        //       @echo Enabling port for SQL Server Browser Service's 'Browse' Button
-        //       netsh firewall set portopening UDP 1434 "SQL Browser"
-        //       @echo Allowing multicast broadcast response on UDP(Browser Service Enumerations OK)
-        //       netsh firewall set multicastbroadcastresponse ENABLE
-
-        //protected void DrScaneados_SelectedIndexChanged(object sender, EventArgs e)
-        //{
-        //    alerta.Visible = false;
-        //    alertaErr.Visible = false;
-        //    alertaLog.Visible = false;
-        //    txtQRCodebis.Visible = false;
-        //    txtQRCode.Visible = true;
-        //    //BtnLanzaPro.Visible = false;
-
-        //    string SQL = "SELECT * FROM ZBANDEJAS  ";
-        //    DataTable dbP = Main.BuscaLote(SQL).Tables[0];
-
-        //    this.Session["IDLista"] = "Escaneados";
-
-        //    //string SQL = "SELECT * FROM ZLOTESCREADOS WHERE ZID = '" + DrScaneados.SelectedItem.Value + "' ";
-        //    SQL = "SELECT * FROM ZENTRADA WHERE LOTE = '" + DrScaneados.SelectedItem.Text + "' ";
-        //    DataTable dbA = Main.BuscaLote(SQL).Tables[0];
-        //    if (dbA.Rows.Count == 0)
-        //    {
-        //        SQL = "SELECT * FROM ZLOTESCREADOS WHERE ZID = '" + DrScaneados.SelectedItem.Value + "' ";
-        //        dbA = Main.BuscaLote(SQL).Tables[0];
-
-        //        foreach (DataRow filas in dbA.Rows)
-        //        {                 
-        //            txtQRCode.Text = filas["ZLOTE"].ToString();
-        //            //TxtID.Text = filas["ZID"].ToString();
-
-        //            //if (filas["ZFECHA"].ToString() != "")
-        //            //{
-        //            //    TxtFecha.Text = filas["ZFECHA"].ToString().Substring(0, 10);
-        //            //}
-        //            //else
-        //            //{
-        //            //    TxtFecha.Text = filas["ZFECHA"].ToString();
-        //            //}
-
-        //            //TxtVariedad.Text = "";
-        //            //TxtCajas.Text = "";
-        //            //TxtPlantas.Text = "";
-        //            LbIDLote.Text = filas["ZID"].ToString();
-
-        //            if (DrPrinters.SelectedItem.Value == "6")
-        //            {
-        //                //LbCodeQRPalteAlv.Text = filas["ZID"].ToString();
-        //                //LbTipoPlantaP.Text = "";
-        //                //LbVariedadP.Text = "";
-        //                //LbVariedadS.Text = "";
-        //                //lbUnidadesP.Text = "";
-        //                //lbNumPlantasP.Text = "";
-        //            }
-        //            else
-        //            {
-        //                //LbCampoS.Text = "";
-        //                //LbFechaS.Text = "";
-        //                //LbVariedadS.Text = "";
-        //                //LbCajasS.Text = "";
-        //                //LbPlantasS.Text = "";
-        //                //Lbcompleto.Text = "";
-        //                //LbPlantaS.Text = "";
-        //            }
-
-        //            //TxtEstado.Text = "";
-        //            //TxtDispositivo.Text = "";
-        //            //TxtLoteDestino.Text = "";
-
-        //            //TxtForm.Text = "";
-        //            //TxtManojos.Text = "";
-        //            //TxtDesde.Text = "";
-        //            //TxtHasta.Text = "";
-        //            //TxtETDesde.Text = "";
-        //            //TxtETHasta.Text = "";
-        //            //TxtTuneles.Text = "";
-        //            //TxtPasillos.Text = "";
-        //            //TxtObservaciones.Text = "";
-        //            //TxtOK.Text = "";
-        //            //H1Normal.Visible = false;
-        //            //H1Seleccion.Visible = false;
-        //            //H1Red.Visible = true;
-        //            //H1Green.Visible = false;
-        //            DrPrinters_Click();
-
-        //            btnGenerate_Click(sender, e);
-        //            alerta.Visible = false;
-        //            alertaErr.Visible = false;
-        //            btnPrint2.Visible = false;
-        //            //BTerminado.Visible = false;
-        //            //btProcesa.Visible = false;
-        //            //btPorcesa.Visible = false;
-        //            alertaLog.Visible = false;
-
-        //            Btfin.Visible = false;
-        //            BTerminado.Visible = false;
-
-        //            //if (DrPrinters.SelectedItem.Value == "1")
-        //            //{
-        //            //    btnPrintA3.Visible = true;
-        //            //}
-        //            //else
-        //            //{
-        //            //    btnPrintB3.Visible = true;
-        //            //}
-
-        //            break;
-        //        }
-        //    }
-        //    else
-        //    {
-        //        foreach (DataRow filas in dbA.Rows)
-        //        {
-        //            //this.Session["IDSecuencia"] = filas["ID"].ToString();
-        //            LbIDLote.Text = filas["ID"].ToString();
-        //            txtQRCode.Text = filas["LOTE"].ToString();
-        //            //TxtCampo.Text = filas["TIPO_PLANTA"].ToString();
-
-        //            //if (filas["FECHA"].ToString() != "")
-        //            //{
-        //            //    TxtFecha.Text = filas["FECHA"].ToString().Substring(0, 10);
-        //            //}
-        //            //else
-        //            //{
-        //            //    TxtFecha.Text = filas["FECHA"].ToString();
-        //            //}
-
-        //            //TxtVariedad.Text = filas["VARIEDAD"].ToString();
-        //            //TxtCajas.Text = filas["UNIDADES"].ToString();
-        //            //TxtEstado.Text = filas["ESTADO"].ToString();
-        //            //TxtDispositivo.Text = filas["DeviceName"].ToString();
-        //            //TxtLoteDestino.Text = filas["LOTEDESTINO"].ToString();
-
-        //            //if (TxtCajas.Text == "CAJAS")
-        //            //{
-        //            //    //LbnumeroPlantas.Text = "Número de Cajas:";
-        //            //    LbCajasS.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //filas["UNIDADES"].ToString();
-        //            //    //LbCajasSQR.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //filas["UNIDADES"].ToString();
-        //            //    LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //            //    //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-
-        //            //}
-        //            //if (TxtCajas.Text == "PLANTAS")
-        //            //{
-        //            //    //LbnumeroPlantas.Text = "Número de Plantas:";
-        //            //    LbCajasS.Text = "Unidades: " + filas["UNIDADES"].ToString();
-        //            //    //LbCajasSQR.Text = "Unidades: " + filas["UNIDADES"].ToString();
-        //            //    LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //            //    //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //            //}
-
-        //            try
-        //            {
-        //                foreach (DataRow fila2 in dbP.Rows)
-        //                {
-        //                    if (fila2["ZTIPO_PLANTA"].ToString() == filas["TIPO_PLANTA"].ToString() && fila2["ZTIPO_FORMATO"].ToString() == filas["UNIDADES"].ToString())
-        //                    {
-        //                        if (filas["UNIDADES"].ToString() == "PLANTAS")
-        //                        {
-        //                            LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //                            //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //                            break;
-        //                        }
-        //                        else if (filas["UNIDADES"].ToString() == "CAJAS")
-        //                        {
-        //                            if (filas["MANOJOS"].ToString() == "0" || filas["MANOJOS"].ToString() == "" || filas["MANOJOS"].ToString() == null)
-        //                            {
-        //                                LbPlantasS.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                                //LbPlantasSQR.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                            }
-        //                            else
-        //                            {
-        //                                foreach (DataRow fila3 in dbP.Rows)
-        //                                {
-        //                                    if (fila3["ZTIPO_PLANTA"].ToString() == filas["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
-        //                                    {
-        //                                        int NN = Convert.ToInt32(filas["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
-        //                                        LbPlantasS.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                        //LbPlantasSQR.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                        break;
-        //                                    }
-        //                                }
-        //                            }
-        //                            break;
-        //                        }
-        //                    }
-        //                }
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                Lberror.Text = ex.Message;
-        //            }
-
-        //            TxtPlantas.Text = filas["NUM_UNIDADES"].ToString();
-        //            LbCampoS.Text = "CAMPO O SECTOR: " + filas["DESDE"].ToString();
-        //            //LbCampoSQR.Text = "CAMPO O SECTOR: " + filas["DESDE"].ToString();
-        //            LbPlantaS.Text = "TIPO PLANTAS: " + filas["TIPO_PLANTA"].ToString();
-        //            //LbPlantaSQR.Text = "TIPO PLANTAS: " + filas["TIPO_PLANTA"].ToString();
-
-        //            if(filas["FECHA"].ToString() != "")
-        //            {
-        //                LbFechaS.Text = "FECHA CORTE: " + filas["FECHA"].ToString().Substring(0,10);
-        //            }
-        //            else
-        //            {
-        //                LbFechaS.Text = "FECHA CORTE: ";
-        //            }
-
-        //            //LbFechaSQR.Text = "FECHA CORTE: " + filas["FECHA"].ToString();
-        //            LbVariedadS.Text = "VARIEDAD: " + filas["VARIEDAD"].ToString();
-        //            //LbVariedadSQR.Text = "VARIEDAD: " + filas["VARIEDAD"].ToString();
-        //            //LbCajasS.Text = "Nº CAJAS: " + filas["UNIDADES"].ToString();
-        //            //LbPlantasS.Text = "Nº PLANTAS: " + filas["NUM_UNIDADES"].ToString();
-        //            Lbcompleto.Text = "QR COMPLETO";
-
-        //            TxtID.Text = filas["ID"].ToString();
-        //            TxtForm.Text = filas["TIPO_FORM"].ToString();
-        //            TxtManojos.Text = filas["MANOJOS"].ToString();
-        //            TxtDesde.Text = filas["DESDE"].ToString();
-        //            TxtHasta.Text = filas["HASTA"].ToString();
-        //            TxtETDesde.Text = filas["ETDESDE"].ToString();
-        //            TxtETHasta.Text = filas["ETHASTA"].ToString();
-        //            TxtTuneles.Text = filas["TUNELES"].ToString();
-        //            TxtPasillos.Text = filas["PASILLOS"].ToString();
-        //            TxtObservaciones.Text = filas["OBSERVACIONES"].ToString();
-        //            TxtOK.Text = filas["OK"].ToString();
-
-        //            ////if (TxtID.Enabled == true)
-        //            ////{
-        //                 //Oculta_Datos(1);
-        //            ////}
-        //            ////else
-        //            ////{
-        //            ////    Oculta_Datos(0);
-        //            ////}
-
-        //            H1Normal.Visible = false;
-        //            H1Seleccion.Visible = false;
-        //            H1Red.Visible = true;
-        //            if (DrPrinters.SelectedItem.Value == "1")
-        //            {
-        //                btnPrintA3.Visible = true;
-        //            }
-        //            else
-        //            {
-        //                btnPrintB3.Visible = true;
-        //            }
-        //            H1Green.Visible = false;
-        //            btnPrint2.Visible = false;
-
-        //            //HLoteProceso.InnerText = "Código QR YA ASIGNADO, PENDIENTE PROCESAR";
-        //            //HLoteProceso.Attributes.Add("style", "color: red; font-weight:bold;");
-
-        //            alerta.Visible = false;
-        //            alertaErr.Visible = false;
-        //            alertaLog.Visible = false;
-
-        //            btnGenerate_Click(sender, e);
-        //            if (DrPrinters.SelectedItem.Value == "4")
-        //            {
-        //                btnGeneraTodoPerf_Click(sender, e);
-        //            }
-        //            else
-        //            {
-        //                btnGenerateTodo_Click(sender, e);
-        //            }
-        //            //btnGenerateTodo_Click(sender, e);
-
-        //            //btProcesa.Visible = false;
-        //            //btPorcesa.Visible = false;
-        //            Btfin.Visible = false;
-        //            BTerminado.Visible = false;
-        //            string Miro = filas["ESTADO"].ToString();
-        //            if (filas["ESTADO"].ToString() == "" || filas["ESTADO"].ToString() == "0")
-        //            {
-        //                BTerminado.Visible = true;
-        //            }
-        //            else if (filas["ESTADO"].ToString() == "1")
-        //            {
-        //                Btfin.Visible = true;
-        //            }
-
-        //            //SQL = "DELETE FROM ZLOTESCREADOS WHERE ZLOTE = '" + txtQRCode.Text + "'";
-        //            SQL = "UPDATE ZLOTESCREADOS SET ZESTADO = -1 WHERE ZLOTE = '" + txtQRCode.Text + "'";
-        //            DBHelper.ExecuteNonQuery(SQL);
-        //            Carga_Lotes(this.Session["IDSecuencia"].ToString());
-        //            Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
-
-        //            break;
-        //        }
-        //    }           
-        //}
-
-        //protected void DrLotes_SelectedIndexChanged(object sender, EventArgs e)
-        //{
-        //    alerta.Visible = false;
-        //    alertaErr.Visible = false;
-        //    alertaLog.Visible = false;
-        //    txtQRCodebis.Visible = false;
-        //    txtQRCode.Visible = true;
-        //    BTerminado.Visible = false;
-        //    Btfin.Visible = false;
-        //    //BtnLanzaPro.Visible = false;
-        //    BtEnviaFinalizados.Enabled = false;
-        //    string AA = "";
-        //    string CC = "";
-        //    string BB = "";
-        //    string DD = "";
-        //    string EE = "";
-        //    string FF = "";
-
-
-        //    BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
-
-        //    string SQL = "SELECT * FROM ZBANDEJAS  ";
-        //    DataTable dbP = Main.BuscaLote(SQL).Tables[0];
-
-        //    this.Session["IDLista"] = "Lotes";
-
-        //    SQL = "SELECT * FROM ZENTRADA  WHERE ID = '" + DrLotes.SelectedItem.Value + "' ";
-        //    DataTable dbA = Main.BuscaLote(SQL).Tables[0];
-        //    foreach (DataRow filas in dbA.Rows)
-        //    {
-        //        LbIDLote.Text = filas["ID"].ToString();
-        //        if (filas["ESTADO"].ToString().ToString() == "1" )
-        //        {
-        //            if (DrVariedad.SelectedItem.Value == "5")
-        //            {
-        //                BtEnviaFinalizados.Enabled = false;
-        //            }
-        //            else
-        //            {
-        //                BtEnviaFinalizados.Enabled = true;
-        //            }
-        //            //BtEnviaFinalizados.Enabled = true;
-        //            BtFinalizalote.Attributes["class"] = "btn btn-info  btn-block";
-        //        }
-
-        //        txtQRCode.Text = filas["LOTE"].ToString();
-        //        TxtCampo.Text = filas["TIPO_PLANTA"].ToString();
-
-        //        if (filas["FECHA"].ToString() != "")
-        //        {
-        //            TxtFecha.Text = filas["FECHA"].ToString().Substring(0, 10);
-        //        }
-        //        else
-        //        {
-        //            TxtFecha.Text = filas["FECHA"].ToString();
-        //        }
-
-        //        TxtVariedad.Text = filas["VARIEDAD"].ToString();
-        //        TxtCajas.Text = filas["UNIDADES"].ToString();
-        //        TxtEstado.Text = filas["ESTADO"].ToString();
-        //        TxtDispositivo.Text = filas["DeviceName"].ToString();
-        //        TxtLoteDestino.Text = filas["LOTEDESTINO"].ToString();
-
-        //        if (DrPrinters.SelectedItem.Value == "6")
-        //        {                      
-        //            LbCodeQRPalteAlv.Text = filas["LOTE"].ToString();
-        //            LbTipoPlantaP.Text = "";
-        //            LbVariedadP.Text = "";
-        //            lbUnidadesP.Text = "";
-        //            lbNumPlantasP.Text = "";
-
-        //            if (TxtCajas.Text == "CAJAS")
-        //            {
-        //                lbUnidadesP.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //+ filas["UNIDADES"].ToString();
-        //                lbNumPlantasP.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-
-        //            }
-        //            if (TxtCajas.Text == "PLANTAS")
-        //            {
-        //                lbUnidadesP.Text = "Unidades: " + filas["UNIDADES"].ToString();
-        //                lbNumPlantasP.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //            }
-        //            if (TxtCajas.Text == "BANDEJAS")
-        //            {
-        //                lbUnidadesP.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //+ filas["UNIDADES"].ToString(); filas["UNIDADES"].ToString();
-        //                lbNumPlantasP.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //            }
-
-        //            TxtPlantas.Text = filas["NUM_UNIDADES"].ToString();
-
-        //            //LbTipoPlantaP.Text = "Tipo Planta: BANDEJAS " + filas["TIPO_PLANTA"].ToString();
-
-        //            Object Con = DBHelper.ExecuteScalarSQL("SELECT TOP 1 (ZDESCRIPTIPO) FROM  ZTIPOPLANTADESCRIP  WHERE ZTIPO_PLANTA = '" + filas["TIPO_PLANTA"].ToString() + "'", null);
-
-        //            if (Con is null)
-        //            {
-        //                LbTipoPlantaP.Text = "Tipo Planta: " + filas["TIPO_PLANTA"].ToString();
-        //            }
-        //            else
-        //            {
-        //                LbTipoPlantaP.Text = "Tipo Planta: " + Con;
-        //            }
-
-        //            //LbTipoPlantaP.Text = "Tipo Planta: " + filas["TIPO_PLANTA"].ToString()
-
-
-        //            //LbTipoPlantaP.Text = "Tipo Planta: " + filas["UNIDADES"].ToString() + " " + filas["TIPO_PLANTA"].ToString(); // "Tipo Planta: BANDEJAS " + filas["TIPO_PLANTA"].ToString();
-
-        //            string N = "";
-        //            Con = DBHelper.ExecuteScalarSQL("SELECT TOP 1 (ZDESCRIPCION) FROM  ZEMPRESAVARIEDAD  WHERE ZVARIEDAD ='" + filas["VARIEDAD"].ToString() + "'", null);
-
-        //            if (Con is null)
-        //            {
-        //                LbVariedadP.Text = "Variedad: " + filas["VARIEDAD"].ToString();
-        //            }
-        //            else
-        //            {
-        //                LbVariedadP.Text = "Variedad: " + Con;
-        //            }
-
-        //            N = "";
-        //            Con = DBHelper.ExecuteScalarSQL("SELECT TOP 1 (ZEMPRESA) FROM  ZEMPRESAVARIEDAD  WHERE ZVARIEDAD ='" + filas["VARIEDAD"].ToString() + "'", null);
-
-        //            if (Con is null)
-        //            {
-        //                //VIVA: Viveros Valsaín, SLU
-        //                //VRE: Viveros Río Eresma, SLU
-        //                LbCodePaletAlv.Text = "";
-        //            }
-        //            else
-        //            {
-        //                if (Con.ToString().Contains("VIVA"))
-        //                {
-
-        //                    LbCodePaletAlv.Text = "Viveros Valsaín, SLU";
-        //                }
-        //                else
-        //                {
-        //                    LbCodePaletAlv.Text = "Viveros Río Eresma, SLU";
-        //                }
-        //            }
-
-        //            Lbcompleto.Text = "QR COMPLETO";
-        //        }
-        //        else
-        //        {
-        //            LbIDLote.Text = filas["ID"].ToString();
-
-        //            if (TxtCajas.Text == "CAJAS")
-        //            {
-        //                // LbnumeroPlantas.Text = "Número de Cajas:";
-        //                LbCajasS.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //+ filas["UNIDADES"].ToString();
-        //                //LbCajasSQR.Text = "Unidades: " + filas["UNIDADES"].ToString() + " " + filas["NUM_UNIDADES"].ToString(); //+ filas["UNIDADES"].ToString();
-        //                LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //                //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-
-        //            }
-        //            if (TxtCajas.Text == "PLANTAS")
-        //            {
-        //                //LbnumeroPlantas.Text = "Número de Plantas:";
-        //                LbCajasS.Text = "Unidades: " + filas["UNIDADES"].ToString();
-        //                //LbCajasSQR.Text = "Unidades: " + filas["UNIDADES"].ToString();
-        //                LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //                //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //            }
-        //            if (TxtCajas.Text == "BANDEJAS")
-        //            {
-        //                //LbnumeroPlantas.Text = "Número de Plantas:";
-        //                LbCajasS.Text = "Unidades: " + filas["UNIDADES"].ToString();
-        //                //LbCajasSQR.Text = "Unidades: " + filas["UNIDADES"].ToString();
-        //                LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //                //LbPlantasSQR.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //            }
-
-        //            TxtPlantas.Text = filas["NUM_UNIDADES"].ToString();
-        //            LbCampoS.Text = "CAMPO O SECTOR: " + filas["DESDE"].ToString();
-        //            //LbCampoSQR.Text = "CAMPO O SECTOR: " + filas["DESDE"].ToString();
-        //            LbPlantaS.Text = "TIPO PLANTAS: " + filas["TIPO_PLANTA"].ToString();
-        //            //LbPlantaSQR.Text = "TIPO PLANTAS: " + filas["TIPO_PLANTA"].ToString();
-
-        //            if (filas["FECHA"].ToString() != "")
-        //            {
-        //                LbFechaS.Text = "FECHA CORTE: " + filas["FECHA"].ToString().Substring(0, 10);
-        //            }
-        //            else
-        //            {
-        //                LbFechaS.Text = "FECHA CORTE: ";
-        //            }
-
-        //            //LbFechaSQR.Text = "FECHA CORTE: " + filas["FECHA"].ToString();
-        //            LbVariedadS.Text = "VARIEDAD: " + filas["VARIEDAD"].ToString();
-        //            //LbVariedadSQR.Text = "VARIEDAD: " + filas["VARIEDAD"].ToString();
-        //            //LbCajasS.Text = "Nº CAJAS: " + filas["UNIDADES"].ToString();
-        //            //LbPlantasS.Text = "Nº PLANTAS: " + filas["NUM_UNIDADES"].ToString();
-        //            Lbcompleto.Text = "QR COMPLETO";
-        //        }
-
-
-        //        try
-        //        {
-        //            foreach (DataRow fila2 in dbP.Rows)
-        //            {
-        //                AA = fila2["ZTIPO_PLANTA"].ToString();
-        //                CC = fila2["ZTIPO_FORMATO"].ToString();
-        //                //string JJ = filas["UNIDADES"].ToString();
-        //                //string FF = fila2["ZNUMERO_PLANTAS"].ToString();
-
-        //                //if (DrPrinters.SelectedItem.Value == "6")
-        //                //{
-        //                //    BB = "P-ALV-" + filas["TIPO_PLANTA"].ToString();
-        //                //}
-        //                //else
-        //                //{
-        //                    BB = filas["TIPO_PLANTA"].ToString();
-        //                //}
-
-        //                //BB = filas["TIPO_PLANTA"].ToString();//Tips produccion (P-TIPS)
-        //                DD = filas["UNIDADES"].ToString();//CAJAS
-        //                //string EE = filas["NUM_UNIDADES"].ToString();//40
-        //                //string GG = filas["MANOJOS"].ToString();//3
-
-        //                if (fila2["ZTIPO_PLANTA"].ToString() == BB && fila2["ZTIPO_FORMATO"].ToString() == filas["UNIDADES"].ToString())
-        //                {
-        //                    if (filas["UNIDADES"].ToString() == "PLANTAS")
-        //                    {
-        //                        if (DrPrinters.SelectedItem.Value == "6")
-        //                        {
-        //                            lbNumPlantasP.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //                            //value = 1234567890.123456;
-        //                            Double Value = Convert.ToDouble(filas["NUM_UNIDADES"].ToString());
-        //                            lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
-        //                            // Displays 1,234,567,890.1
-        //                        }
-        //                        else
-        //                        {
-        //                            LbPlantasS.Text = "Nº Plantas: " + filas["NUM_UNIDADES"].ToString();
-        //                        }
-        //                        break;
-        //                    }
-        //                    else if (filas["UNIDADES"].ToString() == "CAJAS")
-        //                    {
-        //                        if (filas["MANOJOS"].ToString() == "0" || filas["MANOJOS"].ToString() == "" || filas["MANOJOS"].ToString() == null)
-        //                        {
-        //                            if (DrPrinters.SelectedItem.Value == "6")
-        //                            {
-        //                                string Cuantos = (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                                lbNumPlantasP.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                                Double Value = Convert.ToDouble(Cuantos);
-        //                                lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
-        //                            }
-        //                            else
-        //                            {
-        //                                LbPlantasS.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                            }
-
-        //                            //LbPlantasSQR.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                        }
-        //                        else
-        //                        {
-        //                            foreach (DataRow fila3 in dbP.Rows)
-        //                            {
-        //                                if (fila3["ZTIPO_PLANTA"].ToString() == filas["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
-        //                                {
-        //                                    int NN = Convert.ToInt32(filas["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
-
-        //                                    if (DrPrinters.SelectedItem.Value == "6")
-        //                                    {
-        //                                        string Cuantos = ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                        lbNumPlantasP.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                        Double Value = Convert.ToDouble(Cuantos);
-        //                                        lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
-        //                                    }
-        //                                    else
-        //                                    {
-        //                                        LbPlantasS.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                    }                                  
-        //                                    //LbPlantasSQR.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                    break;
-        //                                }
-        //                            }
-        //                        }
-        //                        break;
-        //                    }
-        //                    else if (filas["UNIDADES"].ToString() == "BANDEJAS")
-        //                    {
-        //                        if (filas["MANOJOS"].ToString() == "0" || filas["MANOJOS"].ToString() == "" || filas["MANOJOS"].ToString() == null)
-        //                        {
-        //                            if (DrPrinters.SelectedItem.Value == "6")
-        //                            {
-        //                                string Cuantos = (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                                lbNumPlantasP.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                                Double Value = Convert.ToDouble(Cuantos);
-        //                                lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",",".");
-        //                            }
-        //                            else
-        //                            {
-        //                                LbPlantasS.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                            }                                   
-        //                            //LbPlantasSQR.Text = "Nº Plantas: " + (Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())).ToString();
-        //                        }
-        //                        else
-        //                        {
-        //                            foreach (DataRow fila3 in dbP.Rows)
-        //                            {
-        //                                if (fila3["ZTIPO_PLANTA"].ToString() == filas["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
-        //                                {
-        //                                    int NN = Convert.ToInt32(filas["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
-
-        //                                    if (DrPrinters.SelectedItem.Value == "6")
-        //                                    {
-        //                                        string Cuantos = ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                        lbNumPlantasP.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                        Double Value = Convert.ToDouble(Cuantos);
-        //                                        lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
-        //                                    }
-        //                                    else
-        //                                    {
-        //                                        LbPlantasS.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                    }                                  
-        //                                    //LbPlantasSQR.Text = "Nº Plantas: " + ((Convert.ToInt32(filas["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN).ToString();
-        //                                    break;
-        //                                }
-        //                            }
-        //                        }
-        //                        break;
-        //                    }
-        //                }
-        //            }
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            Lberror.Text = ex.Message;
-        //        }
-
-        //        //TxtID.Text = filas["ID"].ToString();
-        //        //TxtForm.Text = filas["TIPO_FORM"].ToString();
-        //        //TxtManojos.Text = filas["MANOJOS"].ToString();
-        //        //TxtDesde.Text = filas["DESDE"].ToString();
-        //        //TxtHasta.Text = filas["HASTA"].ToString();
-        //        //TxtETDesde.Text = filas["ETDESDE"].ToString();
-        //        //TxtETHasta.Text = filas["ETHASTA"].ToString();
-        //        //TxtTuneles.Text = filas["TUNELES"].ToString();
-        //        //TxtPasillos.Text = filas["PASILLOS"].ToString();
-        //        //TxtObservaciones.Text = filas["OBSERVACIONES"].ToString();
-        //        //TxtOK.Text = filas["OK"].ToString();
-
-
-        //        alerta.Visible = false;
-        //        alertaErr.Visible = false;
-        //        alertaLog.Visible = false;
-        //        int Runidades = 0;
-
-
-        //        if (DrVariedad.SelectedItem.Value == "7")
-        //        {
-        //            SQL = "SELECT A.* ";
-        //            SQL += " FROM ZENTRADA A, ZFORMULARIOS B ";
-        //            SQL += " WHERE A.TIPO_FORM = B.ZTITULO ";
-        //            SQL += " AND B.ZID = '" + DrVariedad.SelectedItem.Value + "'";
-        //            SQL += " AND A.LOTE = '" + filas["LOTE"].ToString() + "'";
-
-        //            DataTable dbF = Main.BuscaLote(SQL).Tables[0];
-
-        //            if (dbF.Rows.Count > 1)
-        //            {
-        //                int Totales = 0;
-
-        //                foreach (DataRow filaCount in dbF.Rows)
-        //                {
-        //                    try
-        //                    {
-        //                        foreach (DataRow fila2 in dbP.Rows)
-        //                        {
-        //                            string XX = fila2["ZTIPO_FORMATO"].ToString();
-        //                            AA = fila2["ZTIPO_PLANTA"].ToString();                                   
-        //                            //BB = "P-ALV-" + filaCount["TIPO_PLANTA"].ToString();//Tips produccion (P-TIPS)
-        //                            BB =  filaCount["TIPO_PLANTA"].ToString();//Tips produccion (P-TIPS)
-        //                            DD = filaCount["UNIDADES"].ToString();//CAJAS
-        //                            EE = filaCount["NUM_UNIDADES"].ToString();//CAJAS
-        //                            FF = fila2["ZNUMERO_PLANTAS"].ToString();//CAJAS
-
-        //                            if (fila2["ZTIPO_PLANTA"].ToString().Contains(BB) && fila2["ZTIPO_FORMATO"].ToString() == filaCount["UNIDADES"].ToString())
-        //                            {
-        //                                CC = fila2["ZTIPO_FORMATO"].ToString();
-        //                                if (filaCount["UNIDADES"].ToString() == "PLANTAS")
-        //                                {
-        //                                    Totales += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
-        //                                    Runidades += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
-        //                                }
-        //                                else if (filaCount["UNIDADES"].ToString() == "CAJAS")
-        //                                {
-        //                                    if (filaCount["MANOJOS"].ToString() == "0" || filaCount["MANOJOS"].ToString() == "" || filaCount["MANOJOS"].ToString() == null)
-        //                                    {
-        //                                        Totales += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString());
-        //                                        Runidades += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
-        //                                    }
-        //                                    else
-        //                                    {
-        //                                        foreach (DataRow fila3 in dbP.Rows)
-        //                                        {
-        //                                            if (fila3["ZTIPO_PLANTA"].ToString() == filaCount["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
-        //                                            {
-        //                                                int NN = Convert.ToInt32(filaCount["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
-        //                                                Totales += (Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString()) + NN);
-        //                                                Runidades += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
-        //                                                //Runidades += (Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString()) + NN);
-        //                                            }
-        //                                        }
-        //                                    }
-        //                                }
-        //                                else if (filaCount["UNIDADES"].ToString() == "BANDEJAS")
-        //                                {
-        //                                    if (filaCount["MANOJOS"].ToString() == "0" || filaCount["MANOJOS"].ToString() == "" || filaCount["MANOJOS"].ToString() == null)
-        //                                    {
-        //                                        Totales +=  (Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString()));
-        //                                        Runidades += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
-        //                                    }
-        //                                    else
-        //                                    {
-        //                                        foreach (DataRow fila3 in dbP.Rows)
-        //                                        {
-        //                                            if (fila3["ZTIPO_PLANTA"].ToString() == filaCount["TIPO_PLANTA"].ToString() && fila3["ZTIPO_FORMATO"].ToString() == "MANOJOS")
-        //                                            {
-        //                                                int NN = Convert.ToInt32(filaCount["MANOJOS"].ToString()) * Convert.ToInt32(fila3["ZNUMERO_PLANTAS"].ToString());
-        //                                                Totales += ((Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString()) * Convert.ToInt32(fila2["ZNUMERO_PLANTAS"].ToString())) + NN);
-        //                                                Runidades += Convert.ToInt32(filaCount["NUM_UNIDADES"].ToString());
-        //                                            }
-        //                                        }
-        //                                    }
-        //                                }
-        //                                break;
-        //                            }
-        //                        }
-
-        //                        Double Value = Convert.ToDouble(Totales);
-        //                        if (DrPrinters.SelectedItem.Value == "6")
-        //                        {                                    
-        //                            lbNumPlantasP.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
-        //                            lbUnidadesP.Text = "Unidades: " + CC + " " + Runidades.ToString();
-        //                        }
-        //                        else
-        //                        {
-        //                            LbPlantasS.Text = "Nº Plantas: " + String.Format(CultureInfo.InvariantCulture, "{0:0,0}", Value).Replace(",", ".");
-        //                        }                                                                    
-        //                    }
-        //                    catch (Exception ex)
-        //                    {
-        //                        Lberror.Text = ex.Message;
-        //                    }
-        //                }
-        //            }
-        //        }
-
-        //        btnGenerate_Click(sender, e);
-        //        if (DrPrinters.SelectedItem.Value == "4")
-        //        {
-        //            btnGeneraTodoPerf_Click(sender, e);
-        //        }
-        //        else
-        //        {
-        //            btnGenerateTodo_Click(sender, e);
-        //        }
-        //        //btnGenerateTodo_Click(sender, e);
-        //        //btnPrint2.Visible = true;
-        //        //btProcesa.Visible = false;
-        //        //btPorcesa.Visible = false;
-        //        BtFinalizalote.Enabled = false;
-        //        //BtFinalizaTodos.Enabled = true;
-        //        BtEnviaFinalizados.Enabled = false;
-
-        //        Btfin.Visible = false;
-        //        BTerminado.Visible = false;
-        //        string Miro = filas["ESTADO"].ToString();
-        //        if (filas["ESTADO"].ToString() == "" || filas["ESTADO"].ToString() == "0")
-        //        {
-        //            //BTerminado.Visible = true;
-        //            BtFinalizalote.Text = "Finalizar este Lote";
-        //            BtFinalizalote.Attributes["class"] = "btn btn-success  btn-block";
-        //            BtFinalizalote.Enabled = true;
-        //            BtEnviaFinalizados.Enabled = false;
-        //            //BtFinalizaTodos.Enabled = true;
-        //        }
-        //        else if (filas["ESTADO"].ToString() == "1")
-        //        {
-        //            //Btfin.Visible = true;
-        //            BtFinalizalote.Text = "Lote Finalizado";
-        //            BtFinalizalote.Attributes["class"] = "btn btn-warning  btn-block";
-        //            BtFinalizalote.Enabled = false;
-        //            if (DrVariedad.SelectedItem.Value == "5")
-        //            {
-        //                BtEnviaFinalizados.Enabled = false;
-        //            }
-        //            else
-        //            {
-        //                BtEnviaFinalizados.Enabled = true;
-        //            }
-        //            //BtEnviaFinalizados.Enabled = true;
-        //            //BtFinalizaTodos.Enabled = true;
-        //        }
-        //        SQL = "UPDATE ZLOTESCREADOS SET ZESTADO = -1 WHERE ZLOTE = '" + txtQRCode.Text + "'";
-        //        DBHelper.ExecuteNonQuery(SQL);
-        //        //Carga_Lotes(this.Session["IDSecuencia"].ToString());
-        //        Carga_LotesScaneados(this.Session["IDSecuencia"].ToString());
-
-        //        break;
-        //    }
-        //    //cambia el color del lote
-        //    Actualiza_Lote();
-        //    //this.SetDropDownListItemColor(dbA);
-        //}
-
-        private void MiOpenMenu()
-        {
-            ((Satelite.Default)this.Page.Master).InputMenus(0);
-        }
-        private void MiCloseMenu()
-        {
-            ((Satelite.Default)this.Page.Master).InputMenus(1);
-        }
-        protected void btPrinter_Click(object sender, EventArgs e)
-        {
-            //dvDrlist.Visible = true;
-            //dvPrinters.Visible = false;
-
-        }
-
     }
 }

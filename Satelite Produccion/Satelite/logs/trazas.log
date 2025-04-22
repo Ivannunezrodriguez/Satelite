@@ -6009,3 +6009,6 @@ order by ZEMPRESA, SERIE, NUMERO, LINEA
 26-02-2025 12-30-42 = 9 - DESKTOP-BN3QMNC - Jose -  DrFlujoEstado_Changed ID :0 --> SQL:SELECT ZFIRMA  FROM ZESTADOSFLUJO WHERE ZID = 21 --> 
 21-03-2025 13-10-30 = 9 - DESKTOP-BN3QMNC - Jose -  AltaArchivos.Page_load --> Envia a Server.Transfer(Login.aspx). La Sesion:8EVgRN111dp0JVQeb8D33LUjx1biaGDjQ0swpdVVh/M= --> 
 21-03-2025 13-14-42 = 9 - DESKTOP-BN3QMNC - Jose -  AltaArchivos.Page_load --> Envia a Server.Transfer(Login.aspx). La Sesion:8EVgRN111dp0JVQeb8D33LUjx1biaGDjQ0swpdVVh/M= --> 
+22-04-2025 10-54-11 = 9 - Wanapito_i7 - Jose -  AltaArchivos.Page_load --> Envia a Server.Transfer(Login.aspx). La Sesion:NCZLaAfWMAJ0JVQeb8D33KtotR/soxukQ0swpdVVh/M= --> 
+22-04-2025 11-29-44 = 9 - Wanapito_i7 - Jose -  AltaArchivos.Page_load --> Envia a Server.Transfer(Login.aspx). La Sesion:NCZLaAfWMAJ0JVQeb8D33KtotR/soxukQ0swpdVVh/M= --> 
+22-04-2025 11-30-07 = 9 - Wanapito_i7 - Jose -  DrFlujoEstado_Changed ID :0 --> SQL:SELECT ZFIRMA  FROM ZESTADOSFLUJO WHERE ZID = 21 --> 
