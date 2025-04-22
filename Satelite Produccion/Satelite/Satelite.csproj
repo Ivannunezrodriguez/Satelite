@@ -1975,7 +1975,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ADO.cs" />
-    <Compile Include="ConsultaBuilder.cs" />
     <Compile Include="Conexiones.aspx.cs">
       <DependentUpon>Conexiones.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -2047,7 +2046,6 @@
     </Compile>
     <Compile Include="FlujosDatos.aspx.cs">
       <DependentUpon>FlujosDatos.aspx</DependentUpon>
-      <SubType>ASPXCodeBehind</SubType>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Compile>
     <Compile Include="FlujosDatos.aspx.designer.cs">
