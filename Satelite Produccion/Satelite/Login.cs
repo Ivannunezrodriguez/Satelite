@@ -1,167 +1,338 @@
-﻿using Satelite.Models;
+﻿//using Admin.Classes;
 using System;
-using System.Data; 
-using System.Linq; 
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+//using System.Data.OracleClient;
+using System.Linq;
 using System.Web;
+//using Oracle.DataAccess.Client;
+using System.Configuration;
+using System.Globalization;
 
 namespace Satelite
 {
     public partial class Login
     {
-        private static bool IsDateCheckOk()
-        {
-            // (Misma lógica de comprobación de fecha que antes)
-            try { /* ... tu código de fecha ... */ return true; } // Simplificado para el ejemplo
-            catch { /* Loggear error */ return false; }
-        }
-
-        // --- MÉTODO NUEVO CON ENTITY FRAMEWORK ---
-        // Devuelve la entidad ZUSUARIOS o null. ¡Implementar HASHING para password!
-        public static ZUSUARIOS ValidarLoginEF(string sUserName, string sPassword)
-        {
-            if (!IsDateCheckOk()) return null;
-
-            HttpContext context = HttpContext.Current;
-            ZUSUARIOS usuario = null;
-
-            using (var db = new Satelite_BackupEntities()) // Usa el nombre correcto de tu DbContext
-            {
-                try
-                {
-                    // Intento 1: Por Alias y Password (¡NECESITA HASHING!)
-                    usuario = db.ZUSUARIOS
-                                .FirstOrDefault(u => u.ZALIAS == sUserName && u.ZPASSWORD == sPassword);
-
-                    if (usuario != null)
-                    {
-                        context.Session["Session"] = "8"; // Marca para posible segundo paso (Captcha)
-                    }
-                    else
-                    {
-                        // Intento 2: Por Alias y Llave (¡NECESITA HASHING si es sensible!)
-                        string registroLlave = context.Session["Registro"]?.ToString();
-                        if (!string.IsNullOrEmpty(registroLlave))
-                        {
-                            usuario = db.ZUSUARIOS
-                                        .FirstOrDefault(u => u.ZALIAS == sUserName && u.ZLLAVE == registroLlave);
-                            // Si se encuentra por llave, puede que no necesite marcar Session["Session"] = "8"
-                            // if (usuario != null) context.Session["Session"] = "1"; // O lo que sea
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"ERROR en ValidarLoginEF: {ex.ToString()}");
-                    return null; // Devuelve null en caso de error
-                }
-            }
-            return usuario;
-        }
+        //public static DataSet ValidarLogin(string sUserName, string sPassword)
+        //{
 
 
-        // --- MÉTODO PUENTE TEMPORAL: ValidarLogin (Devuelve DataSet) ---
-        // Llama a ValidarLoginEF y construye un DataSet para compatibilidad.
-        public static DataSet ValidarLogin(string sUserName, string sPassword)
-        {
-            ZUSUARIOS usuario = ValidarLoginEF(sUserName, sPassword);
+        //    OracleConnection cn = new OracleConnection(ConfigurationManager.AppSettings.Get("ConnectionStringOracle"));
 
-            // Si el usuario no es válido o hubo error, devuelve un DataSet vacío o null
-            if (usuario == null)
-            {
-                // Decide si devolver null o un DataSet vacío según cómo lo manejen los callers
-                // return null;
-                return new DataSet(); // Más seguro para evitar NullReferenceException en los callers
-            }
+        //    OracleCommand comando;
+        //    OracleDataAdapter Da;
+        //    DataSet MyDataSet = new DataSet();
 
-            // Construye el DataSet similar al original
-            DataSet ds = new DataSet("ResultadoLogin");
-            DataTable dt = new DataTable("UsuarioInfo");
-            ds.Tables.Add(dt);
+        //    comando = new OracleCommand("USER_GEDESPOL.PACK_GEDESPOL.Z_LOGIN_VALIDARLOGIN", cn); //USER_GEDESPOL.PACK_GEDESPOL.ObtenDato
+        //    comando.CommandType = CommandType.StoredProcedure;
 
-            // Añade las columnas que devolvía tu consulta original *y que se usan*
-            // ¡Asegúrate de incluir TODAS las columnas que necesitan los archivos que llaman a este método!
-            dt.Columns.Add("ZID", typeof(int));
-            dt.Columns.Add("ZCODIGO", typeof(string));
-            dt.Columns.Add("ZALIAS", typeof(string));
-            dt.Columns.Add("ZPASSWORD", typeof(string)); // Debería ser el hash
-            dt.Columns.Add("ZROOT", typeof(decimal));
-            dt.Columns.Add("ZKEY", typeof(decimal));
-            dt.Columns.Add("ZNIVEL", typeof(decimal));
-            // --- Columnas que venían de ZLLAVES ---
-            // Necesitas obtener estos datos si los llamadores los usan.
-            // Esto podría requerir ajustar ValidarLoginEF para incluir ZLLAVES o hacer otra consulta.
-            // Por ahora, las añadimos como null o valor por defecto si no las tienes fácilmente.
-            dt.Columns.Add("ZID_TABLA", typeof(int));    // Placeholder
-            dt.Columns.Add("ZID_REGISTRO", typeof(int)); // Placeholder
-            //------------------------------------
-            dt.Columns.Add("ZLLAVE", typeof(string));    // Debería ser el hash
-            dt.Columns.Add("ZDEFAULT", typeof(string));
+        //    // Abrimos conexión
+        //    if (cn.State == 0) cn.Open();
 
+        //    OracleCommandBuilder.DeriveParameters(comando);
 
-            // Crea y llena la fila
-            DataRow dr = dt.NewRow();
-            dr["ZID"] = usuario.ZID;
-            dr["ZCODIGO"] = (object)usuario.ZCODIGO ?? DBNull.Value;
-            dr["ZALIAS"] = (object)usuario.ZALIAS ?? DBNull.Value;
-            dr["ZPASSWORD"] = (object)usuario.ZPASSWORD ?? DBNull.Value; // Hash
-            dr["ZROOT"] = (object)usuario.ZROOT ?? DBNull.Value;
-            dr["ZKEY"] = (object)usuario.ZKEY ?? DBNull.Value;
-            dr["ZNIVEL"] = (object)usuario.ZNIVEL ?? DBNull.Value;
+        //    // Le pasamos los parametros (si existe cursor para el primero se pasa un null
+        //    comando.Parameters[0].Value = sUserName; // Nombre
+        //    comando.Parameters[1].Value = sPassword; // Pass
+        //    //comando.Parameters[1].Value = null;
 
-            // --- Placeholders para ZLLAVES ---
-            // Si necesitas estos datos, tendrás que cargarlos. Ejemplo:
-            // var llaveInfo = db.ZLLAVES.FirstOrDefault(l => l.ZID == usuario.ZKEY);
-            // dr["ZID_TABLA"] = (llaveInfo != null) ? (object)llaveInfo.ZID_TABLA : DBNull.Value;
-            // dr["ZID_REGISTRO"] = (llaveInfo != null) ? (object)llaveInfo.ZID_REGISTRO : DBNull.Value;
-            dr["ZID_TABLA"] = DBNull.Value;    // Valor por defecto temporal
-            dr["ZID_REGISTRO"] = DBNull.Value; // Valor por defecto temporal
-            // -----------------------------------
+        //    // Ejecutamos y llenamo Ds
+        //    Da = new OracleDataAdapter(comando);
+        //    Da.Fill(MyDataSet);
 
-            dr["ZLLAVE"] = (object)usuario.ZLLAVE ?? DBNull.Value;     // Hash
-            dr["ZDEFAULT"] = (object)usuario.ZDEFAULT ?? DBNull.Value;
+        //    //Cerrar conex
+        //    cn.Close();
 
-            dt.Rows.Add(dr);
+        //    //    // Añadimos los datos al datagridview
+        //    //    // dataGridView1.DataSource = MyDataSet.Tables[0];
+        //    return MyDataSet;
 
-            return ds;
-        }
+        //}
 
-        // --- MÉTODO PUENTE TEMPORAL: ValidarUser (Devuelve DataSet) ---
-        // Asume que ValidarUser era una versión simplificada, reutiliza ValidarLoginEF
-        // y devuelve un DataSet con menos columnas si era diferente.
-        
         public static DataSet ValidarUser(string sUserName, string sPassword)
         {
-            ZUSUARIOS usuario = ValidarLoginEF(sUserName, sPassword); // Reutiliza la lógica principal
 
-            if (usuario == null)
+            DataSet ds = null;
+            //0 SQL 1 Oracle
+            DateTime oldDate = Convert.ToDateTime(ConfigurationManager.AppSettings.Get("LastUpdate"));
+            DateTime newDate = Convert.ToDateTime(DateTime.Now.ToString("yyyyMMdd"));
+
+            // Difference in days, hours, and minutes.
+            TimeSpan ts = newDate - oldDate;
+
+            // Difference in days.
+            int differenceInDays = ts.Days;
+
+            if(differenceInDays > 100)
             {
-                return new DataSet(); // Devuelve DataSet vacío
+                return ds;
             }
 
-            // Construye DataSet solo con las columnas que usaba ValidarUser
-            DataSet ds = new DataSet("ResultadoUser");
-            DataTable dt = new DataTable("UsuarioBasico");
-            ds.Tables.Add(dt);
+            //List<Usuario> ListUser = null;
+            if (Variables.configuracionDB == 0)
+            {
+                //DataSet ds = null;
+                string Miro = ConfigurationManager.AppSettings.Get("connectionSQL");
+                SqlConnection cn = new SqlConnection(ConfigurationManager.AppSettings.Get("connectionSQL"));
+                SqlCommand comando;
+                DataSet MyDataSet = new DataSet();
+                string Miquery = " Select ZCODIGO, ZALIAS, ZPASSWORD, ZROOT, ZKEY, ZNIVEL ";
+                Miquery += " from ZUSUARIOS ";
+                Miquery += " where ZALIAS = '" + sUserName + "'";
+                Miquery += " and ZPASSWORD ='" + sPassword + "'";
 
-            // Columnas que probablemente devolvía ValidarUser (ajusta si eran otras)
-            dt.Columns.Add("ZCODIGO", typeof(string));
-            dt.Columns.Add("ZALIAS", typeof(string));
-            dt.Columns.Add("ZPASSWORD", typeof(string)); // Hash
-            dt.Columns.Add("ZROOT", typeof(decimal));
-            dt.Columns.Add("ZKEY", typeof(decimal));
-            dt.Columns.Add("ZNIVEL", typeof(decimal));
+                comando = new SqlCommand(Miquery, cn);
+                comando.CommandType = CommandType.Text;
 
-            DataRow dr = dt.NewRow();
-            dr["ZCODIGO"] = (object)usuario.ZCODIGO ?? DBNull.Value;
-            dr["ZALIAS"] = (object)usuario.ZALIAS ?? DBNull.Value;
-            dr["ZPASSWORD"] = (object)usuario.ZPASSWORD ?? DBNull.Value; // Hash
-            dr["ZROOT"] = (object)usuario.ZROOT ?? DBNull.Value;
-            dr["ZKEY"] = (object)usuario.ZKEY ?? DBNull.Value;
-            dr["ZNIVEL"] = (object)usuario.ZNIVEL ?? DBNull.Value;
-            dt.Rows.Add(dr);
+                if (cn.State == 0) cn.Open();
+                SqlDataAdapter Da = new SqlDataAdapter(comando);
+                ds = new DataSet();
+                Da.Fill(ds);
+                //ListUser.Add(ds);
+                cn.Close();
+            }
+            else if (Variables.configuracionDB == 1)
+            {
+                //DataSet ds = null;
+                //string Miro = ConfigurationManager.AppSettings.Get("ConnectionStringOracle");
+                //OracleConnection cn = new OracleConnection(ConfigurationManager.AppSettings.Get("ConnectionStringOracle"));
+                //OracleCommand comando;
+                //DataSet MyDataSet = new DataSet();
+                //string Miquery = " Select ZID, ZALIAS, ZNIVEL, ZNOMBRE || ' ' || ZAPELLIDO1 || ' ' || ZAPELLIDO2 AS ZNOMBRE, ZPASSWORD, ZDESCRIPCION, ZDNI, ZCOD, NIVEL_DE_EVALUACION, ZPUESTO_TRABAJO, PLANTILLA, ZNIVEL, PLANTILLA ";
+                //Miquery += " from USER_GEDESPOL.ZUSUARIOS ";
+                //Miquery += " where ZALIAS = '" + sUserName + "'";
+                //Miquery += " and ZPASSWORD ='" + sPassword + "'";
 
+                //comando = new OracleCommand(Miquery, cn);
+                //comando.CommandType = CommandType.Text;
+
+                //if (cn.State == 0) cn.Open();
+                //OracleDataAdapter Da = new OracleDataAdapter(comando);
+                //ds = new DataSet();
+                //Da.Fill(ds);
+                ////ListUser.Add(ds);
+                //cn.Close();
+            }
             return ds;
+
         }
 
-    } // Fin Clase
-} // Fin Namespace
+        public static DataSet ValidarLogin(string sUserName, string sPassword)
+        {
+
+            DataSet ds = null;
+            DataTable dt = null;
+            //0 SQL 1 Oracle
+            //List<Usuario> ListUser = null;
+#pragma warning disable CS0168 // La variable 'ex' se ha declarado pero nunca se usa
+            try
+            {
+                string Data1 = ConfigurationManager.AppSettings.Get("LastUpdate");
+                string Data2 = DateTime.Now.ToString("yyyyMMdd");
+
+                DateTime oldDate = DateTime.ParseExact(Data1, "yyyyMMdd", CultureInfo.InvariantCulture); 
+                DateTime newDate = DateTime.ParseExact(Data2, "yyyyMMdd", CultureInfo.InvariantCulture);
+
+                // Difference in days, hours, and minutes.
+                TimeSpan ts = newDate - oldDate;
+
+                // Difference in days.
+                int differenceInDays = ts.Days;
+
+                if (differenceInDays > 100)
+                {
+                    dt = ds.Tables[0];
+                    return ds;
+                }
+            }
+            catch(Exception ex)
+            {
+                dt = ds.Tables[0];
+                return ds;
+            }
+#pragma warning restore CS0168 // La variable 'ex' se ha declarado pero nunca se usa
+
+            if (Variables.configuracionDB == 0)
+            {
+                HttpContext context = HttpContext.Current;
+                //DataSet ds = null;
+                string Miro = ConfigurationManager.AppSettings.Get("connectionSQL");
+
+                String[] Fields = System.Text.RegularExpressions.Regex.Split(Miro, ";");
+                if (Fields.Length > 0) 
+                {
+                    for (int i = 0; i < Fields.Count() -1; i++)
+                    {
+                        if (Fields[i].Contains("Initial Catalog=") == true)
+                        {
+                            context.Session["Mydb"] = Fields[i].ToString().Replace("Initial Catalog=", "");
+                            break;
+                        }          
+                    }
+                }
+                //Catalog = Satelite_Backup;
+                //context.Session["Mydb"] = Miro;
+
+                SqlConnection cn = new SqlConnection(ConfigurationManager.AppSettings.Get("connectionSQL"));
+                SqlCommand comando;
+                DataSet MyDataSet = new DataSet();
+                string Miquery = " Select A.ZID, A.ZCODIGO, A.ZALIAS, A.ZPASSWORD, A.ZROOT, A.ZKEY, A.ZNIVEL, B.ZID_TABLA, B.ZID_REGISTRO, A.ZLLAVE, A.ZDEFAULT ";
+                Miquery += " from ZUSUARIOS A, ZLLAVES B ";
+                Miquery += " where A.ZALIAS = '" + sUserName + "'";
+                Miquery += " and A.ZPASSWORD ='" + sPassword + "'";
+                //Miquery += " and B.ZID_USER = A.ZID ";
+                Miquery += " and B.ZID = A.ZKEY ";
+
+                comando = new SqlCommand(Miquery, cn);
+                comando.CommandType = CommandType.Text;
+
+                if (cn.State == 0) cn.Open();
+                SqlDataAdapter Da = new SqlDataAdapter(comando);
+                ds = new DataSet();
+                Da.Fill(ds);
+                //ListUser.Add(ds);
+                dt = ds.Tables[0];
+                cn.Close();
+
+                //context.Session["Session"] = "0";
+
+                //Si existe, es porque no esta registrado ya que ZPASSWORD debe estar vacia
+                if (ds.Tables[0].Rows.Count > 0)
+                {
+                    //Envio la sesion para que se registre presentando el formulario.
+                    context.Session["Session"] = "8";
+                }
+                //Si está vacia busca en su password creada
+                if (ds.Tables[0].Rows.Count == 0)
+                {
+                    Miquery = " Select A.ZID, A.ZCODIGO, A.ZALIAS, A.ZPASSWORD, A.ZROOT, A.ZKEY, A.ZNIVEL, B.ZID_TABLA, B.ZID_REGISTRO, A.ZLLAVE, A.ZDEFAULT ";
+                    Miquery += " from ZUSUARIOS A, ZLLAVES B ";
+                    Miquery += " where A.ZALIAS = '" + sUserName + "'";
+                    Miquery += " and A.ZLLAVE ='" + context.Session["Registro"].ToString() + "'";
+                    //Miquery += " and B.ZID_USER = A.ZID ";
+                    Miquery += " and B.ZID = A.ZKEY ";
+
+                    comando = new SqlCommand(Miquery, cn);
+                    comando.CommandType = CommandType.Text;
+
+                    if (cn.State == 0) cn.Open();
+                    Da = new SqlDataAdapter(comando);
+                    ds = new DataSet();
+                    Da.Fill(ds);
+                    //ListUser.Add(ds);
+                    dt = ds.Tables[0];
+                    cn.Close();
+                }
+            }
+            else if (Variables.configuracionDB == 1)
+            {
+                //DataSet ds = null;
+                //string Miro = ConfigurationManager.AppSettings.Get("ConnectionStringOracle");
+                //OracleConnection cn = new OracleConnection(ConfigurationManager.AppSettings.Get("ConnectionStringOracle"));
+                //OracleCommand comando;
+                //DataSet MyDataSet = new DataSet();
+                //string Miquery = " Select ZID, ZALIAS, ZNIVEL, ZNOMBRE || ' ' || ZAPELLIDO1 || ' ' || ZAPELLIDO2 AS ZNOMBRE, ZPASSWORD, ZDESCRIPCION, ZDNI, ZCOD, NIVEL_DE_EVALUACION, ZPUESTO_TRABAJO, PLANTILLA, ZNIVEL, PLANTILLA ";
+                //Miquery += " from USER_GEDESPOL.ZUSUARIOS ";
+                //Miquery += " where ZALIAS = '" + sUserName + "'";
+                //Miquery += " and ZPASSWORD ='" + sPassword + "'";
+
+                //comando = new OracleCommand(Miquery, cn);
+                //comando.CommandType = CommandType.Text;
+
+                //if (cn.State == 0) cn.Open();
+                //OracleDataAdapter Da = new OracleDataAdapter(comando);
+                //ds = new DataSet();
+                //Da.Fill(ds);
+                ////ListUser.Add(ds);
+                //cn.Close();
+            }
+            return ds;
+
+        }
+
+        //public static DataSet ValidarLogin(string sUserName, string sPassword)
+        //{
+
+        //    DataSet ds = null;
+        //    DataTable dt = null;
+        //    //0 SQL 1 Oracle
+        //    //List<Usuario> ListUser = null;
+        //    try
+        //    {
+        //        string Data1 = ConfigurationManager.AppSettings.Get("LastUpdate");
+        //        string Data2 = DateTime.Now.ToString("yyyyMMdd");
+
+        //        DateTime oldDate = DateTime.ParseExact(Data1, "yyyyMMdd", CultureInfo.InvariantCulture);
+        //        DateTime newDate = DateTime.ParseExact(Data2, "yyyyMMdd", CultureInfo.InvariantCulture);
+
+        //        // Difference in days, hours, and minutes.
+        //        TimeSpan ts = newDate - oldDate;
+
+        //        // Difference in days.
+        //        int differenceInDays = ts.Days;
+
+        //        if (differenceInDays > 100)
+        //        {
+        //            dt = ds.Tables[0];
+        //            return ds;
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        dt = ds.Tables[0];
+        //        return ds;
+        //    }
+
+        //    if (Variables.configuracionDB == 0)
+        //    {
+        //        //DataSet ds = null;
+        //        string Miro = ConfigurationManager.AppSettings.Get("connectionSQL");
+        //        SqlConnection cn = new SqlConnection(ConfigurationManager.AppSettings.Get("connectionSQL"));
+        //        SqlCommand comando;
+        //        DataSet MyDataSet = new DataSet();
+        //        string Miquery = " Select A.ZCODIGO, A.ZALIAS, A.ZPASSWORD, A.ZROOT, A.ZKEY, A.ZNIVEL, B.ZID_TABLA, B.ZID_REGISTRO ";
+        //        Miquery += " from ZUSUARIOS A, ZLLAVES B ";
+        //        Miquery += " where A.ZALIAS = '" + sUserName + "'";
+        //        Miquery += " and A.ZPASSWORD ='" + sPassword + "'";
+        //        //Miquery += " and B.ZID_USER = A.ZID ";
+        //        Miquery += " and B.ZID = A.ZKEY ";
+
+        //        comando = new SqlCommand(Miquery, cn);
+        //        comando.CommandType = CommandType.Text;
+
+        //        if (cn.State == 0) cn.Open();
+        //        SqlDataAdapter Da = new SqlDataAdapter(comando);
+        //        ds = new DataSet();
+        //        Da.Fill(ds);
+        //        //ListUser.Add(ds);
+        //        dt = ds.Tables[0];
+        //        cn.Close();
+        //    }
+        //    else if (Variables.configuracionDB == 1)
+        //    {
+        //        //DataSet ds = null;
+        //        //string Miro = ConfigurationManager.AppSettings.Get("ConnectionStringOracle");
+        //        //OracleConnection cn = new OracleConnection(ConfigurationManager.AppSettings.Get("ConnectionStringOracle"));
+        //        //OracleCommand comando;
+        //        //DataSet MyDataSet = new DataSet();
+        //        //string Miquery = " Select ZID, ZALIAS, ZNIVEL, ZNOMBRE || ' ' || ZAPELLIDO1 || ' ' || ZAPELLIDO2 AS ZNOMBRE, ZPASSWORD, ZDESCRIPCION, ZDNI, ZCOD, NIVEL_DE_EVALUACION, ZPUESTO_TRABAJO, PLANTILLA, ZNIVEL, PLANTILLA ";
+        //        //Miquery += " from USER_GEDESPOL.ZUSUARIOS ";
+        //        //Miquery += " where ZALIAS = '" + sUserName + "'";
+        //        //Miquery += " and ZPASSWORD ='" + sPassword + "'";
+
+        //        //comando = new OracleCommand(Miquery, cn);
+        //        //comando.CommandType = CommandType.Text;
+
+        //        //if (cn.State == 0) cn.Open();
+        //        //OracleDataAdapter Da = new OracleDataAdapter(comando);
+        //        //ds = new DataSet();
+        //        //Da.Fill(ds);
+        //        ////ListUser.Add(ds);
+        //        //cn.Close();
+        //    }
+        //    return ds;
+
+        //}
+    }
+}

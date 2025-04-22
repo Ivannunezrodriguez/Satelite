@@ -2046,6 +2046,7 @@
     </Compile>
     <Compile Include="FlujosDatos.aspx.cs">
       <DependentUpon>FlujosDatos.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Compile>
     <Compile Include="FlujosDatos.aspx.designer.cs">
